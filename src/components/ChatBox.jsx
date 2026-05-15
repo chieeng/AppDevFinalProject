@@ -1,53 +1,251 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { getMessagesSync, addMessage } from "../data/adminData";
 
+// ChatBox — Real conversation widget between user and VacanSee admin
+// Shows all the user's inquiries grouped by property (one thread per property)
+// User can send new messages and see admin replies
 function ChatBox() {
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([]);
+  const [open, setOpen]           = useState(false);
+  const [selectedThread, setSelectedThread] = useState(null); // propertyId of open thread
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending]     = useState(false);
+  const [messages, setMessages]   = useState([]); // loaded from localStorage cache
 
-  const sendMessage = () => {
-    if (!message.trim()) return;
+  const bottomRef  = useRef(null);
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const userId     = localStorage.getItem("userId");
+  const userName   = localStorage.getItem("userFullName") || "You";
 
-    setMessages([...messages, message]);
-    setMessage("");
+  // Load and refresh messages from localStorage cache
+  const refreshMessages = () => {
+    const all = getMessagesSync();
+    const mine = all.filter((m) => String(m.from) === String(userId));
+    setMessages(mine);
+  };
+
+  useEffect(() => {
+    if (open && isLoggedIn) refreshMessages();
+  }, [open]);
+
+  // Scroll to bottom when thread opens or new message arrives
+  useEffect(() => {
+    if (selectedThread) {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    }
+  }, [selectedThread, messages]);
+
+  // Group messages by property — one thread per property
+  const threads = messages.reduce((acc, msg) => {
+    const key = String(msg.propertyId);
+    if (!acc[key]) {
+      acc[key] = {
+        propertyId:    msg.propertyId,
+        propertyTitle: msg.propertyTitle,
+        messages:      [],
+        lastDate:      msg.date,
+        hasUnread:     false,
+      };
+    }
+    acc[key].messages.push(msg);
+    // Track if there's a new admin reply
+    if (msg.reply && !msg.read) acc[key].hasUnread = true;
+    // Keep the most recent date for sorting
+    if (msg.date > acc[key].lastDate) acc[key].lastDate = msg.date;
+    return acc;
+  }, {});
+
+  const threadList = Object.values(threads).sort(
+    (a, b) => new Date(b.lastDate) - new Date(a.lastDate)
+  );
+
+  const currentThread = selectedThread ? threads[String(selectedThread)] : null;
+
+  // Send a new message in the current thread
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !currentThread) return;
+    setSending(true);
+    try {
+      await addMessage({
+        from:          userId,
+        fromName:      userName,
+        fromEmail:     localStorage.getItem("userEmail") || "",
+        propertyId:    currentThread.propertyId,
+        propertyTitle: currentThread.propertyTitle,
+        text:          replyText.trim(),
+      });
+      setReplyText("");
+      refreshMessages(); // refresh so the new message appears immediately
+    } catch (err) {
+      console.error("Failed to send:", err);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendReply(); }
+  };
+
+  // ── Not logged in state ───────────────────────────────────────
+  const NotLoggedIn = () => (
+    <div className="chatbox-nologin">
+      <span className="chatbox-nologin-icon">💬</span>
+      <p>Log in to view your conversations with VacanSee</p>
+      <a href="/login" className="chatbox-login-btn">Log In</a>
+    </div>
+  );
+
+  // ── Thread list (inbox) ───────────────────────────────────────
+  const ThreadList = () => (
+    <div className="chatbox-threads">
+      {threadList.length === 0 ? (
+        <div className="chatbox-empty">
+          <span>📭</span>
+          <p>No conversations yet</p>
+          <small>When you message the owner after booking a property, it will appear here.</small>
+        </div>
+      ) : (
+        threadList.map((thread) => {
+          const lastMsg = [...thread.messages].sort(
+            (a, b) => new Date(b.date) - new Date(a.date)
+          )[0];
+          const preview = lastMsg.reply || lastMsg.text;
+          return (
+            <div
+              key={thread.propertyId}
+              className={`chatbox-thread-item ${thread.hasUnread ? "unread" : ""}`}
+              onClick={() => setSelectedThread(thread.propertyId)}
+            >
+              <div className="cti-avatar">🏠</div>
+              <div className="cti-body">
+                <div className="cti-title">{thread.propertyTitle}</div>
+                <div className="cti-preview">{preview?.slice(0, 55)}{preview?.length > 55 ? "…" : ""}</div>
+              </div>
+              <div className="cti-meta">
+                <span className="cti-date">{new Date(lastMsg.date).toLocaleDateString()}</span>
+                {thread.hasUnread && <span className="cti-dot" />}
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+
+  // ── Single thread conversation ────────────────────────────────
+  const ThreadView = () => {
+    if (!currentThread) return null;
+    // Sort all messages in this thread by date ascending
+    const sorted = [...currentThread.messages].sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+
+    return (
+      <div className="chatbox-thread-view">
+        <div className="chatbox-messages">
+          {sorted.map((msg, i) => (
+            <div key={i} className="chatbox-msg-group">
+              {/* User's message */}
+              <div className="chatbox-bubble user">
+                <span className="chatbox-bubble-label">{userName}</span>
+                <p>{msg.text}</p>
+                <span className="chatbox-bubble-time">
+                  {new Date(msg.date).toLocaleDateString()}
+                </span>
+              </div>
+
+              {/* Admin reply if exists */}
+              {msg.reply && (
+                <div className="chatbox-bubble admin">
+                  <span className="chatbox-bubble-label">VacanSee Admin</span>
+                  <p>{msg.reply}</p>
+                  {msg.replyDate && (
+                    <span className="chatbox-bubble-time">
+                      {new Date(msg.replyDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Awaiting state for unreplied messages */}
+              {!msg.reply && (
+                <div className="chatbox-awaiting">⏳ Awaiting admin reply…</div>
+              )}
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Reply input */}
+        <div className="chatbox-reply">
+          <textarea
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder="Type a follow-up message… (Enter to send)"
+            rows={2}
+            disabled={sending}
+          />
+          <button
+            className="chatbox-send-btn"
+            onClick={handleSendReply}
+            disabled={sending || !replyText.trim()}
+          >
+            {sending ? "…" : "Send"}
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
     <>
-      {/* FLOAT BUTTON */}
-      <div className="chat-toggle" onClick={() => setOpen(!open)}>
+      {/* Floating button */}
+      <div className="chat-toggle" onClick={() => { setOpen(!open); setSelectedThread(null); }} title="Messages">
         💬
       </div>
 
-      {/* CHAT WINDOW */}
       {open && (
-        <div className="chat-container">
+        <div className="chat-container chatbox-redesigned">
 
+          {/* Header */}
           <div className="chat-header">
-            <h4>Chat Support</h4>
-            <span onClick={() => setOpen(false)}>✖</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {selectedThread && (
+                <button
+                  className="chatbox-back-btn"
+                  onClick={() => { setSelectedThread(null); refreshMessages(); }}
+                >
+                  ←
+                </button>
+              )}
+              <div>
+                <h4>
+                  {selectedThread && currentThread
+                    ? currentThread.propertyTitle
+                    : "Messages"}
+                </h4>
+                <span style={{ fontSize: "11px", opacity: 0.7 }}>
+                  {selectedThread ? "VacanSee Admin" : `${threadList.length} conversation${threadList.length !== 1 ? "s" : ""}`}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => { setOpen(false); setSelectedThread(null); }}
+              style={{ background: "none", border: "none", color: "white", cursor: "pointer", fontSize: "18px", padding: 0 }}
+            >
+              ✕
+            </button>
           </div>
 
-          <div className="chat-messages">
-            {messages.length === 0 ? (
-              <p className="empty">No messages yet</p>
-            ) : (
-              messages.map((msg, i) => (
-                <div key={i} className="chat-bubble">
-                  {msg}
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="chat-input">
-            <input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type a message..."
-            />
-            <button onClick={sendMessage}>Send</button>
-          </div>
+          {/* Body */}
+          {!isLoggedIn ? (
+            <NotLoggedIn />
+          ) : selectedThread ? (
+            <ThreadView />
+          ) : (
+            <ThreadList />
+          )}
 
         </div>
       )}

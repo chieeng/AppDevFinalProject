@@ -1,0 +1,217 @@
+/* ================================================
+   CARDS STYLES
+   ================================================ */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 22px;
+}
+
+/* List view mode for Browse page */
+.cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cards-list .card {
+  display: flex;
+  flex-direction: row;
+  border-radius: var(--radius-lg);
+}
+
+.cards-list .card-placeholder {
+  width: 200px;
+  min-width: 200px;
+  height: auto;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.cards-list .card-content {
+  flex: 1;
+}
+
+/* ---- CARD BASE ---- */
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  animation: slideIn 0.4s ease-out both;
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl);
+  border-color: rgba(15,164,146,0.18);
+}
+
+/* ---- IMAGE WRAPPER ---- */
+/* position:relative is the anchor for all absolute children */
+.card-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 196px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0fa492, #2563eb); /* fallback if img missing */
+  display: block;
+}
+
+/* The real photo */
+.card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Subtle dark gradient at the bottom — behind all badges */
+.card-img-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.30) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ❤️ HEART BUTTON — top-left, small, above overlay */
+.card-heart {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.90);
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 26px;
+  text-align: center;
+  padding: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.22);
+  transition: transform 0.15s ease;
+  display: block;
+}
+
+.card-heart:hover  { transform: scale(1.2); background: white; }
+.card-heart.saved  { background: #fff0f0; }
+
+/* AVAILABILITY — top-right */
+.card-avail {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.card-avail.yes { background: rgba(5,150,105,0.85);  color: #fff; }
+.card-avail.no  { background: rgba(220,38,38,0.82);  color: #fff; }
+
+/* PROPERTY TYPE — bottom-left */
+.card-type {
+  position: absolute;
+  bottom: 9px;
+  left: 9px;
+  z-index: 2;
+  background: rgba(0,0,0,0.54);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.2px;
+}
+
+
+/* ---- CARD CONTENT ---- */
+.card-content {
+  padding: 18px 20px 22px;
+}
+
+.card h3 {
+  font-size: 15px;
+  margin-bottom: 5px;
+  color: var(--color-text-primary);
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1.35;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.location {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.location::before { content: '📍'; font-size: 12px; }
+
+/* Bedrooms/bathrooms quick stats */
+.card-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.card-stats span {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  background: var(--color-light-bg);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+/* Price with /mo in smaller text */
+.price {
+  font-size: 20px;
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 14px;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.price span {
+  font-size: 13px;
+  font-weight: 500;
+  background: none;
+  -webkit-text-fill-color: var(--color-text-muted);
+}
+
+/* View Details button */
+.card-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all var(--transition-base);
+  box-shadow: 0 3px 10px rgba(15,164,146,0.25);
+  letter-spacing: 0.2px;
+}

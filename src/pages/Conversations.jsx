@@ -1,39 +1,72 @@
-import cover1 from "../images/cover-1.png";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { getMessages } from "../data/adminData";
 
-function Conversations() {
-  const conversations = [
-    { id: 1, name: "Cozy Pines Boarding House", lastMessage: "When can you visit?", time: "2 hours ago", unread: 2 },
-    { id: 2, name: "City Comfort Residence", lastMessage: "Available next week", time: "1 day ago", unread: 0 },
-    { id: 3, name: "Sampaguita Boarding Home", lastMessage: "Thank you for your interest", time: "3 days ago", unread: 0 },
-    { id: 4, name: "UrbanNest Boarding House", lastMessage: "Price negotiable", time: "1 week ago", unread: 1 },
-  ];
+// Messages — shows the current user's sent inquiries and any admin replies
+function Messages() {
+  const [messages, setMessages] = useState([]);
+  const userId = localStorage.getItem("userId");
+
+  useEffect(() => {
+    getMessages().then((all) => {
+      setMessages(all.filter((m) => m.from === userId).reverse());
+    });
+  }, []);
 
   return (
-    <div className="conversations-page">
-      <div className="conversations-header" style={{ backgroundImage: `url(${cover1})` }}>
-        <h1>Conversation History</h1>
-        <p>Your messages with property owners</p>
+    <div className="messages-page">
+      <div className="inner-page-header">
+        <div className="container">
+          <h1>My Conversations</h1>
+          <p>All your property inquiries</p>
+        </div>
       </div>
 
-      <div className="container">
-        <div className="conversations-list">
-          {conversations.map((conv) => (
-            <div key={conv.id} className="conversation-item">
-              <div className="conv-avatar">💬</div>
-              <div className="conv-info">
-                <h3>{conv.name}</h3>
-                <p>{conv.lastMessage}</p>
+      <div className="container messages-body">
+        {messages.length === 0 ? (
+          <div className="empty-state-box">
+            <div className="empty-icon">💬</div>
+            <h2>No Messages Yet</h2>
+            <p>Browse a property and click "Message Owner" to start an inquiry.</p>
+            <Link to="/browse" className="empty-cta-btn">Browse Properties</Link>
+          </div>
+        ) : (
+          <div className="message-list">
+            {messages.map((msg) => (
+              <div key={msg.id} className="message-thread-card">
+                <div className="mtc-icon">💬</div>
+                <div className="mtc-body">
+                  <div className="mtc-top">
+                    <strong className="mtc-property">Re: {msg.propertyTitle}</strong>
+                    <span className="mtc-date">{new Date(msg.date).toLocaleDateString()}</span>
+                  </div>
+
+                  {/* The message the user sent */}
+                  <div className="mtc-bubble user-bubble">
+                    <span className="mtc-bubble-label">You</span>
+                    <p>{msg.text}</p>
+                  </div>
+
+                  {/* Admin reply (if any) */}
+                  {msg.reply ? (
+                    <div className="mtc-bubble admin-bubble">
+                      <span className="mtc-bubble-label">VacanSee Admin</span>
+                      <p>{msg.reply}</p>
+                      <span className="mtc-reply-time">
+                        {msg.replyDate ? new Date(msg.replyDate).toLocaleDateString() : ""}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mtc-awaiting">⏳ Awaiting reply from admin…</div>
+                  )}
+                </div>
               </div>
-              <div className="conv-meta">
-                <span className="conv-time">{conv.time}</span>
-                {conv.unread > 0 && <span className="unread-badge">{conv.unread}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default Conversations;
+export default Messages;

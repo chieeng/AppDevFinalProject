@@ -1,95 +1,173 @@
 import { Link } from "react-router-dom";
-import Topbar from "../components/Topbar";
-import BoardingCard from "../components/BoardingCard";
+import { useState, useEffect } from "react";
+import { getBookingsByUser, getSavedIds } from "../data/adminData";
+import { getAllListings } from "../data/appData";
+import Card from "../components/Card";
 
-function Dashboard({ bookings }) {
-  const quickActions = [
-    { icon: "🔍", label: "Search Properties", link: "/search" },
-    { icon: "💬", label: "Messages", link: "/messages" },
-    { icon: "❤️", label: "Saved", link: "/profile" },
-    { icon: "👤", label: "Profile", link: "/profile" }
+// Dashboard — shown to regular (non-admin) logged-in users
+// Shows their booking history with live status, and saved properties
+function Dashboard() {
+  const userId   = localStorage.getItem("userId");
+  const userName = localStorage.getItem("userFullName") || "User";
+
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading]   = useState(true);
+
+  const allListings = getAllListings();
+  const savedIds    = getSavedIds();
+  const savedListings = allListings.filter((p) => savedIds.includes(p.id)).slice(0, 3);
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const mine = await getBookingsByUser(userId);
+        setBookings(mine);
+      } catch {
+        const cached = JSON.parse(localStorage.getItem("vs_bookings") || "[]");
+        setBookings(cached.filter((b) => String(b.userId) === String(userId)));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBookings();
+  }, [userId]);
+
+  const statusStyle = (status) => {
+    if (status === "confirmed") return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
+    if (status === "rejected")  return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
+    return { bg: "#fffbeb", color: "#d97706", border: "#fde68a" };
+  };
+
+  const stats = [
+    { icon: "📋", label: "My Bookings",     value: bookings.length },
+    { icon: "⏳", label: "Pending",          value: bookings.filter((b) => b.status === "pending").length },
+    { icon: "✅", label: "Confirmed",         value: bookings.filter((b) => b.status === "confirmed").length },
+    { icon: "❤️", label: "Saved Properties", value: savedIds.length },
   ];
 
   return (
     <div className="dashboard-page">
-      <Topbar />
 
-      {/* WELCOME SECTION */}
+      {/* WELCOME BANNER */}
       <div className="dashboard-welcome">
         <div className="container">
-          <h1>Welcome back! 👋</h1>
-          <p>Manage your bookings and explore new properties</p>
+          <div className="dash-welcome-inner">
+            <div>
+              <h1>Welcome back, {userName}! 👋</h1>
+              <p>Here is a summary of your activity on VacanSee</p>
+            </div>
+            <div className="dash-welcome-actions">
+              <Link to="/search" className="dash-action-btn primary">🔍 Find a Room</Link>
+              <Link to="/saved"  className="dash-action-btn outline">❤️ Saved ({savedIds.length})</Link>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* QUICK ACTIONS */}
-      <div className="quick-actions-section">
-        <div className="container">
+      <div className="container dash-content">
+
+        {/* STATS ROW */}
+        <div className="dashboard-stats">
+          {stats.map((s, i) => (
+            <div key={i} className="dash-stat">
+              <div className="stat-icon">{s.icon}</div>
+              <div className="stat-content">
+                <h4>{s.label}</h4>
+                <p>{s.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* BOOKINGS */}
+        <div className="dash-section">
+          <div className="dash-section-header">
+            <h2>My Booking Requests</h2>
+            <Link to="/browse" className="dash-section-link">Browse More →</Link>
+          </div>
+
+          {loading ? (
+            <p style={{ color: "var(--color-text-muted)", padding: "20px 0" }}>Loading bookings…</p>
+          ) : bookings.length === 0 ? (
+            <div className="dash-empty">
+              <div className="empty-icon">🏠</div>
+              <h3>No bookings yet</h3>
+              <p>Browse properties and submit your first booking request.</p>
+              <Link to="/browse" className="empty-cta-btn">Browse Properties</Link>
+            </div>
+          ) : (
+            <div className="bookings-list">
+              {[...bookings].reverse().map((b) => {
+                const s = statusStyle(b.status);
+                return (
+                  <div key={b.id} className="booking-row">
+                    <div className="booking-row-info">
+                      <div className="booking-row-title">{b.propertyTitle}</div>
+                      <div className="booking-row-meta">
+                        <span>📅 Move-in: {b.checkIn}</span>
+                        <span>🗓 {b.months} month{b.months !== 1 ? "s" : ""}</span>
+                        <span>💰 ₱{(b.total || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <span
+                      className="booking-status-pill"
+                      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
+                    >
+                      {b.status === "pending"   && "⏳ "}
+                      {b.status === "confirmed" && "✅ "}
+                      {b.status === "rejected"  && "❌ "}
+                      {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* SAVED PROPERTIES */}
+        {savedListings.length > 0 && (
+          <div className="dash-section">
+            <div className="dash-section-header">
+              <h2>❤️ Saved Properties</h2>
+              <Link to="/saved" className="dash-section-link">View All →</Link>
+            </div>
+            <div className="cards">
+              {savedListings.map((p) => (
+                <Card
+                  key={p.id}
+                  id={p.id}
+                  title={p.title}
+                  location={p.city || p.location}
+                  price={p.price}
+                  bedrooms={p.bedrooms}
+                  bathrooms={p.bathrooms}
+                  propertyType={p.propertyType}
+                  status={p.status}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* QUICK LINKS */}
+        <div className="dash-section">
+          <div className="dash-section-header"><h2>Quick Links</h2></div>
           <div className="quick-actions">
-            {quickActions.map((action, index) => (
-              <Link to={action.link} key={index} className="quick-action-btn">
-                <span className="action-icon">{action.icon}</span>
-                <span className="action-label">{action.label}</span>
+            {[
+              { icon: "🔍", label: "Search Properties", link: "/search" },
+              { icon: "🏠", label: "Browse All",        link: "/browse" },
+              { icon: "💬", label: "My Messages",       link: "/messages" },
+              { icon: "👤", label: "My Profile",        link: "/profile" },
+            ].map((a, i) => (
+              <Link key={i} to={a.link} className="quick-action-btn">
+                <span className="action-icon">{a.icon}</span>
+                <span className="action-label">{a.label}</span>
               </Link>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* STATS */}
-      <div className="container">
-        <div className="stats">
-          <div className="stat-card">
-            <h4>📊 Available Properties</h4>
-            <p className="stat-number">24</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>📋 Your Bookings</h4>
-            <p className="stat-number">{bookings.length}</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>💬 New Messages</h4>
-            <p className="stat-number">5</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>⭐ Rating</h4>
-            <p className="stat-number">4.9</p>
-          </div>
-        </div>
-      </div>
-
-      {/* BOOKINGS SECTION */}
-      <div className="container">
-        <div className="suggestions">
-          <div className="section-header-inline">
-            <h2>Your Active Bookings</h2>
-            <Link to="/search" className="view-more-link">Browse More →</Link>
-          </div>
-
-          {bookings.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">📭</div>
-              <h3>No bookings yet</h3>
-              <p>Start exploring properties and make your first booking today!</p>
-              <Link to="/search" className="empty-state-btn">Search Properties</Link>
-            </div>
-          ) : (
-            <div className="cards">
-              {bookings.map((item, index) => (
-                <BoardingCard
-                  key={index}
-                  id={item.id}
-                  title={item.title}
-                  location={item.location}
-                  price={item.price}
-                />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

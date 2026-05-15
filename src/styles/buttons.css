@@ -1,0 +1,233 @@
+/* ================================================
+   BUTTONS STYLES
+   Primary, secondary, and utility buttons
+   ================================================ */
+
+/* ================= CTA BUTTONS ================= */
+.cta-btn {
+  padding: 18px 50px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: left 0.3s ease;
+}
+
+.cta-btn.primary {
+  background: white;
+  color: #14b8a6;
+  font-weight: 800;
+}
+
+.cta-btn.primary:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 50px rgba(255,255,255, 0.5);
+}
+
+.cta-btn.primary:hover::before {
+  left: 100%;
+}
+
+.cta-btn.primary:active {
+  transform: translateY(-2px);
+}
+
+.cta-btn.secondary {
+  background: transparent;
+  color: white;
+  border: 2px solid white;
+  font-weight: 800;
+}
+
+.cta-btn.secondary:hover {
+  background: rgba(255,255,255, 0.15);
+  border-color: white;
+  transform: translateY(-5px);
+  box-shadow: 0 16px 50px rgba(0,0,0,0.3);
+}
+
+.cta-btn.secondary:active {
+  transform: translateY(-2px);
+}
+
+/* ================= VIEW ALL BUTTON ================= */
+.view-all-btn {
+  text-align: center;
+  margin-top: 70px;
+}
+
+.view-all-btn a {
+  display: inline-block;
+  padding: 18px 50px;
+  background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(20, 184, 166, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.view-all-btn a::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: left 0.3s ease;
+}
+
+.view-all-btn a:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 50px rgba(20, 184, 166, 0.4);
+}
+
+.view-all-btn a:hover::before {
+  left: 100%;
+}
+
+.view-all-btn a:active {
+  transform: translateY(-2px);
+}
+
+/* ================= NAVBAR BUTTONS ================= */
+.auth-buttons button {
+  margin-left: 12px;
+  padding: 10px 22px;
+  border-radius: 25px;
+  border: 2px solid #14b8a6;
+  background: transparent;
+  color: #14b8a6;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-buttons button:hover {
+  background: #14b8a6;
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(20, 184, 166, 0.3);
+}
+
+.auth-buttons button:active {
+  transform: translateY(-1px);
+}
+
+/* ================= EMPTY STATE BUTTON ================= */
+.empty-state-btn {
+  display: inline-block;
+  padding: 14px 36px;
+  background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%);
+  color: white;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.empty-state-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(20, 184, 166, 0.3);
+}
+
+/* ================= SAVE BUTTON ================= */
+.save-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(20, 184, 166, 0.4);
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+  .cta-buttons {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .cta-btn {
+    width: 100%;
+    padding: 16px 32px;
+  }
+
+  .auth-buttons button {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .view-all-btn {
+    margin-top: 40px;
+  }
+
+  .view-all-btn a {
+    padding: 14px 32px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 480px) {
+  .cta-section h2 {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  .cta-section p {
+    font-size: 15px;
+    margin-bottom: 32px;
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cta-btn {
+    padding: 16px 28px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .view-all-btn a {
+    padding: 14px 32px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+}

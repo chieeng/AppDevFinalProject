@@ -1,33 +1,69 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { getMessages } from "../data/adminData";
+
+// Messages — shows the current user's sent inquiries and any admin replies
 function Messages() {
+  const [messages, setMessages] = useState([]);
+  const userId = localStorage.getItem("userId");
+
+  useEffect(() => {
+    getMessages().then((all) => {
+      setMessages(all.filter((m) => m.from === userId).reverse());
+    });
+  }, []);
+
   return (
-    <div className="messages-container">
-      <div className="messages-header">
-        <h1>Messages</h1>
-        <p>Chat with property owners and support</p>
+    <div className="messages-page">
+      <div className="inner-page-header">
+        <div className="container">
+          <h1>My Messages</h1>
+          <p>Inquiries you sent to property owners</p>
+        </div>
       </div>
 
-      <div className="messages-content">
-        <div className="message-item">
-          <div className="message-avatar">🏠</div>
-          <div className="message-info">
-            <h3>Cozy Pines Boarding House</h3>
-            <p>Thank you for your interest! When would you like to visit?</p>
-            <span className="message-time">2 hours ago</span>
+      <div className="container messages-body">
+        {messages.length === 0 ? (
+          <div className="empty-state-box">
+            <div className="empty-icon">💬</div>
+            <h2>No Messages Yet</h2>
+            <p>Browse a property and click "Message Owner" to start an inquiry.</p>
+            <Link to="/browse" className="empty-cta-btn">Browse Properties</Link>
           </div>
-        </div>
+        ) : (
+          <div className="message-list">
+            {messages.map((msg) => (
+              <div key={msg.id} className="message-thread-card">
+                <div className="mtc-icon">💬</div>
+                <div className="mtc-body">
+                  <div className="mtc-top">
+                    <strong className="mtc-property">Re: {msg.propertyTitle}</strong>
+                    <span className="mtc-date">{new Date(msg.date).toLocaleDateString()}</span>
+                  </div>
 
-        <div className="message-item">
-          <div className="message-avatar">🏢</div>
-          <div className="message-info">
-            <h3>City Comfort Residence</h3>
-            <p>We have availability next week. Would you like to book?</p>
-            <span className="message-time">1 day ago</span>
+                  {/* The message the user sent */}
+                  <div className="mtc-bubble user-bubble">
+                    <span className="mtc-bubble-label">You</span>
+                    <p>{msg.text}</p>
+                  </div>
+
+                  {/* Admin reply (if any) */}
+                  {msg.reply ? (
+                    <div className="mtc-bubble admin-bubble">
+                      <span className="mtc-bubble-label">VacanSee Admin</span>
+                      <p>{msg.reply}</p>
+                      <span className="mtc-reply-time">
+                        {msg.replyDate ? new Date(msg.replyDate).toLocaleDateString() : ""}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mtc-awaiting">⏳ Awaiting reply from admin…</div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-
-        <div className="empty-state">
-          <p>No new messages</p>
-        </div>
+        )}
       </div>
     </div>
   );

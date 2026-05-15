@@ -1,102 +1,88 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
+import { authService } from "../services/authService";
 
+// Login page — handles both admin and regular user login
+// IMPORTANT: Admin login goes through the backend to get the real database ID.
+// This ensures ownerId is correct when the admin creates property listings.
 function Login({ setIsLoggedIn }) {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
+  const navigate  = useNavigate();
+  const [email,    setEmail]    = useState("");
+  const [password, setPassword] = useState("");
+  const [error,    setError]    = useState("");
+  const [loading,  setLoading]  = useState(false);
 
-  const VALID_EMAIL = "eragritchiegg@gmail.com";
+  const ADMIN_EMAIL = "admin@vacansee.com";
 
-  const handleLogin = () => {
-    if (!email) {
-      setError("Please enter your email");
-      return;
-    }
-    
-    if (email.toLowerCase() === VALID_EMAIL.toLowerCase()) {
+  const handleLogin = async () => {
+    if (!email || !password) { setError("Please enter both email and password."); return; }
+    setLoading(true);
+    setError("");
+
+    try {
+      // All logins go through the backend — this gives us the real DB userId
+      const response = await authService.login(email, password);
+
+      // Store real DB userId — critical for bookings, inquiries, and property creation
+      localStorage.setItem("userId",       String(response.userId));
+      localStorage.setItem("userEmail",    response.email    || email);
+      localStorage.setItem("userFullName", response.fullName || "User");
+      localStorage.setItem("isLoggedIn",   "true");
+
+      // Admin is identified by email — role stored separately
+      const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      localStorage.setItem("userRole", isAdmin ? "admin" : "user");
+
       setIsLoggedIn(true);
-      setError("");
-      navigate("/menu");
-    } else {
-      setError("Invalid email. Please use: eragritchiegg@gmail.com");
-    }
-  };
+      navigate(isAdmin ? "/admin" : "/dashboard");
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleLogin();
+    } catch (err) {
+      setError(err.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="auth-page">
-
-      {/* CENTER CARD */}
       <div className="auth-container">
         <div className="auth-card">
-
+          <div className="auth-logo">🏠</div>
           <h3>Welcome Back</h3>
-          <p className="subtitle">
-            Log in to access your bookings and manage properties
-          </p>
+          <p className="subtitle">Log in to access your bookings and messages</p>
 
-          {/* SOCIAL BUTTONS */}
-          <button className="social google">Log in with Google</button>
-          <button className="social facebook">Log in with Facebook</button>
-          <button className="social apple">Log in with Apple</button>
+          <div className="admin-hint">
+            <strong>Admin:</strong> admin@vacansee.com / admin123
+          </div>
 
-          <div className="divider">or</div>
+          {error && <div className="error-message">{error}</div>}
 
-          {/* INPUT */}
-          <input 
-            type="email" 
-            placeholder="Enter your email" 
+          <input
+            type="email"
+            placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+            disabled={loading}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+            disabled={loading}
           />
 
-          {error && <p className="error-message">{error}</p>}
-
-          <button className="btn-continue" onClick={handleLogin}>
-            Continue
+          <button className="btn-continue" onClick={handleLogin} disabled={loading}>
+            {loading ? "Logging in..." : "Log In"}
           </button>
 
           <p className="other">
-            Don't have an account? <Link to="/register" className="link">Sign up</Link>
+            No account yet? <Link to="/register" className="link">Sign up free</Link>
           </p>
-
-          {/* DEMO HINT */}
-          <p className="demo-hint">Demo: eragritchiegg@gmail.com</p>
-
         </div>
       </div>
-
-      {/* FOOTER */}
-      <div className="auth-footer">
-        <div>
-          <h4>CUSTOMER SERVICE</h4>
-          <p>Help Center</p>
-          <p>Booking Guide</p>
-          <p>Payment Methods</p>
-        </div>
-
-        <div>
-          <h4>ABOUT VACANSEE</h4>
-          <p>About Us</p>
-          <p>Careers</p>
-          <p>Policies</p>
-        </div>
-
-        <div>
-          <h4>FOLLOW US</h4>
-          <p>Facebook</p>
-          <p>Instagram</p>
-          <p>YouTube</p>
-        </div>
-      </div>
-
     </div>
   );
 }

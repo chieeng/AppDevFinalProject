@@ -1,106 +1,163 @@
 import { useState } from "react";
 import Card from "../components/Card";
 import cover2 from "../images/cover-2.png";
+import { getAllListings } from "../data/appData";
 
 function Browse() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortPrice, setSortPrice] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filterBedrooms, setFilterBedrooms] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
 
-  const allListings = [
-    { id: 1, title: "Cozy Pines Boarding House", location: "Baguio City", price: 6500 },
-    { id: 2, title: "City Comfort Residence", location: "Quezon City", price: 8000 },
-    { id: 3, title: "Sampaguita Boarding Home", location: "Cebu City", price: 7000 },
-    { id: 4, title: "UrbanNest Boarding House", location: "Davao City", price: 6800 },
-    { id: 5, title: "Haven Home Residences", location: "Manila", price: 9000 },
-    { id: 6, title: "Tranquil Stays Baguio", location: "Baguio City", price: 7500 },
-    { id: 7, title: "Metro View Apartments", location: "Makati", price: 8500 },
-    { id: 8, title: "Student Haven", location: "Diliman", price: 5500 },
-    { id: 9, title: "Sunset Plaza", location: "Pasay", price: 7200 },
-    { id: 10, title: "Garden House", location: "Antipolo", price: 6000 },
-    { id: 11, title: "Sky Tower Dorm", location: "BGC", price: 9500 },
-    { id: 12, title: "Riverside Lodge", location: "Cubao", price: 6800 },
-    { id: 13, title: "Heritage Home", location: "Intramuros", price: 7800 },
-    { id: 14, title: "Peace Villa", location: "Tagaytay", price: 6200 },
-    { id: 15, title: "Golden Gate Rooms", location: "Paranaque", price: 8200 },
-    { id: 16, title: "Sunrise Boarding", location: "Las Piñas", price: 5800 },
-    { id: 17, title: "Modern Stay", location: "Taguig", price: 8800 },
-    { id: 18, title: "Family Rooms", location: "Caloocan", price: 5900 },
-    { id: 19, title: "Premium Lodge", location: "Mandaluyong", price: 9200 },
-    { id: 20, title: "Comfort Inn", location: "Valenzuela", price: 6400 }
-  ];
+  const allListings = getAllListings();
+  const propertyTypes = [...new Set(allListings.map((p) => p.propertyType).filter(Boolean))];
 
-  // SEARCH FILTER
-  let filteredListings = allListings.filter(item =>
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  let results = allListings.filter((item) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      item.title.toLowerCase().includes(q) ||
+      (item.city || item.location || "").toLowerCase().includes(q)
+    );
+  });
 
-  // PRICE SORT
+  if (filterType) {
+    results = results.filter((p) => p.propertyType === filterType);
+  }
+
+  if (filterBedrooms) {
+    results = results.filter((p) => p.bedrooms >= parseInt(filterBedrooms));
+  }
+
   if (sortPrice === "low-high") {
-    filteredListings.sort((a, b) => a.price - b.price);
+    results = [...results].sort((a, b) => (a.price || 0) - (b.price || 0));
+  } else if (sortPrice === "high-low") {
+    results = [...results].sort((a, b) => (b.price || 0) - (a.price || 0));
   }
 
-  if (sortPrice === "high-low") {
-    filteredListings.sort((a, b) => b.price - a.price);
-  }
+  const resetFilters = () => {
+    setSearchTerm("");
+    setSortPrice("");
+    setFilterType("");
+    setFilterBedrooms("");
+  };
+
+  const hasFilters = searchTerm || sortPrice || filterType || filterBedrooms;
 
   return (
-      <div className="browse-page">
-
-        <div className="browse-header" style={{ backgroundImage: `url(${cover2})` }}>
-          <h1>Browse Available Listings</h1>
-          <p>Discover {filteredListings.length} board rooms across the Philippines</p>
-        </div>
-
-        <div className="container">
-
-          {/* CONTROLS */}
-          <div className="browse-controls">
-
-            {/* SEARCH ONLY */}
-            <input
-                type="text"
-                placeholder="Search by title or location..."
-                className="search-input"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
-            {/* PRICE SORT ONLY */}
-            <select
-                className="search-input"
-                value={sortPrice}
-                onChange={(e) => setSortPrice(e.target.value)}
-            >
-              <option value="">Sort by Price</option>
-              <option value="low-high">Low → High</option>
-              <option value="high-low">High → Low</option>
-            </select>
-
-          </div>
-
-          {/* CARDS */}
-          <div className="cards">
-            {filteredListings.map((item) => (
-                <Card
-                    key={item.id}
-                    id={item.id}
-                    title={item.title}
-                    location={item.location}
-                    price={item.price}
-                />
-            ))}
-          </div>
-
-          {/* NO RESULTS */}
-          {filteredListings.length === 0 && (
-              <div className="no-results">
-                <p>No properties found matching your search.</p>
-              </div>
-          )}
-
+    <div className="browse-page">
+      <div className="browse-header" style={{ backgroundImage: `url(${cover2})` }}>
+        <div className="browse-header-overlay">
+          <h1>Browse Boarding Houses</h1>
+          <p>Discover {allListings.length} verified properties across the Philippines</p>
         </div>
       </div>
+
+      <div className="browse-body">
+        <aside className="browse-sidebar">
+          <div className="sidebar-box">
+            <h3>Search</h3>
+            <input
+              type="text"
+              placeholder="Title or city..."
+              className="sidebar-input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="sidebar-box">
+            <h3>Property Type</h3>
+            <select
+              className="sidebar-input"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="">All Types</option>
+              {propertyTypes.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div className="sidebar-box">
+            <h3>Bedrooms</h3>
+            <select
+              className="sidebar-input"
+              value={filterBedrooms}
+              onChange={(e) => setFilterBedrooms(e.target.value)}
+            >
+              <option value="">Any</option>
+              <option value="1">1+ Bedroom</option>
+              <option value="2">2+ Bedrooms</option>
+              <option value="3">3+ Bedrooms</option>
+              <option value="4">4+ Bedrooms</option>
+            </select>
+          </div>
+          <div className="sidebar-box">
+            <h3>Sort by Price</h3>
+            <select
+              className="sidebar-input"
+              value={sortPrice}
+              onChange={(e) => setSortPrice(e.target.value)}
+            >
+              <option value="">Default</option>
+              <option value="low-high">Low to High</option>
+              <option value="high-low">High to Low</option>
+            </select>
+          </div>
+          {hasFilters && (
+            <button className="clear-filters-btn" onClick={resetFilters}>
+              Clear Filters
+            </button>
+          )}
+        </aside>
+
+        <main className="browse-main">
+          <div className="browse-results-header">
+            <p className="results-count">
+              <strong>{results.length}</strong> {results.length === 1 ? "property" : "properties"} found
+            </p>
+            <div className="view-toggle">
+              <button
+                className={viewMode === "grid" ? "active" : ""}
+                onClick={() => setViewMode("grid")}
+                title="Grid View"
+              >
+                Grid
+              </button>
+              <button
+                className={viewMode === "list" ? "active" : ""}
+                onClick={() => setViewMode("list")}
+                title="List View"
+              >
+                List
+              </button>
+            </div>
+          </div>
+
+          {results.length === 0 ? (
+            <div className="no-results-box">
+              <p>No properties found matching your filters.</p>
+              <button onClick={resetFilters}>Clear Filters</button>
+            </div>
+          ) : (
+            <div className={viewMode === "grid" ? "cards" : "cards-list"}>
+              {results.map((item) => (
+                <Card
+                  key={item.id}
+                  id={item.id}
+                  title={item.title}
+                  location={item.city || item.location}
+                  price={item.price}
+                  bedrooms={item.bedrooms}
+                  bathrooms={item.bathrooms}
+                  propertyType={item.propertyType} status={item.status} featuredImage={item.featuredImage}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }
 

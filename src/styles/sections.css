@@ -1,0 +1,215 @@
+.featured {
+  padding: 80px 0;
+  background: var(--color-white);
+}
+
+.stats-section {
+  background: var(--gradient-primary);
+  padding: 64px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-section::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  position: relative;
+  z-index: 1;
+}
+
+.stat-item {
+  text-align: center;
+  color: white;
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.stat-item:nth-child(2) { animation-delay: 0.08s; }
+.stat-item:nth-child(3) { animation-delay: 0.16s; }
+.stat-item:nth-child(4) { animation-delay: 0.24s; }
+
+.stat-item h3 {
+  font-size: 40px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  color: white;
+}
+
+.stat-item p {
+  font-size: 14px;
+  opacity: 0.88;
+  font-weight: 500;
+  color: white;
+}
+
+.how-it-works {
+  background: var(--color-light-bg);
+  padding: 80px 0;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 60px;
+}
+
+.step-card {
+  background: white;
+  padding: 36px 28px;
+  border-radius: var(--radius-xl);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  border: 1px solid var(--color-border);
+  animation: slideInUp 0.6s ease-out both;
+}
+
+.step-card:nth-child(1) { animation-delay: 0s; }
+.step-card:nth-child(2) { animation-delay: 0.08s; }
+.step-card:nth-child(3) { animation-delay: 0.16s; }
+.step-card:nth-child(4) { animation-delay: 0.24s; }
+
+.step-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(15,164,146,0.15);
+}
+
+.step-number {
+  font-size: 13px;
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.step-card h3 {
+  font-size: 17px;
+  color: var(--color-text-primary);
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.step-card p {
+  color: var(--color-text-tertiary);
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.cta-section {
+  background: var(--gradient-primary);
+  color: white;
+  padding: 100px 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-section::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cta-section h2 {
+  font-size: 42px;
+  font-weight: 400;
+  margin-bottom: 16px;
+  letter-spacing: -0.8px;
+  position: relative;
+  z-index: 1;
+  color: white;
+  font-family: 'DM Serif Display', serif;
+}
+
+.cta-section p {
+  font-size: 17px;
+  opacity: 0.9;
+  margin-bottom: 40px;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.7;
+  position: relative;
+  z-index: 1;
+  color: white;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.cta-btn {
+  padding: 14px 36px;
+  border-radius: var(--radius-full);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all var(--transition-base);
+  letter-spacing: 0.1px;
+}
+
+.cta-btn.primary {
+  background: white;
+  color: var(--color-primary);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.cta-btn.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.2);
+}
+
+.cta-btn.secondary {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 2px solid rgba(255,255,255,0.4);
+}
+
+.cta-btn.secondary:hover {
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.7);
+  transform: translateY(-3px);
+}
+
+@media (max-width: 900px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .steps-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .stat-item h3 { font-size: 30px; }
+  .cta-section h2 { font-size: 30px; }
+  .steps-grid { grid-template-columns: 1fr; }
+}

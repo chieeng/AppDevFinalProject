@@ -1,34 +1,129 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import logo from "../images/logo.png";
 
-function Navbar({ isLoggedIn }) {
+function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin }) {
+  const location = useLocation();
+  const navigate  = useNavigate();
+  const isActive  = (p) => location.pathname === p ? "active" : "";
+
+  const [dark, setDark]           = useState(() => localStorage.getItem("theme") === "dark");
+  const [dropdownOpen, setDropdown] = useState(false);
+
+  const userName  = localStorage.getItem("userFullName") || "User";
+  const initials  = userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", saved);
+    setDark(saved === "dark");
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const close = (e) => { if (!e.target.closest(".nav-profile-menu")) setDropdown(false); };
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, []);
+
+  const handleLogout = () => {
+    ["userId","userEmail","userFullName","userRole","isLoggedIn"].forEach((k) => localStorage.removeItem(k));
+    setIsLoggedIn(false);
+    navigate("/");
+  };
+
+  // Admin navbar — simple, no extra icons
+  if (isAdmin) {
+    return (
+      <nav className="navbar navbar-admin">
+        <div className="container navbar-inner">
+          <Link to="/admin" className="logo">
+            <img src={logo} alt="VacanSee" className="logo-img" />
+            <span>VacanSee</span>
+            <span className="admin-badge">ADMIN</span>
+          </Link>
+          <div className="auth-buttons">
+            <button className="theme-toggle" onClick={() => setDark(!dark)} title="Toggle theme">
+              {dark ? "☀️" : "🌙"}
+            </button>
+            <button className="nav-login-btn" onClick={handleLogout}>Logout</button>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   return (
-    <div className="navbar">
+    <nav className="navbar">
       <div className="container navbar-inner">
 
-        <div className="logo">
-          <img src={logo} alt="VacanSee Logo" className="logo-img" />
+        <Link to="/" className="logo">
+          <img src={logo} alt="VacanSee" className="logo-img" />
           <span>VacanSee</span>
-        </div>
+        </Link>
 
         <ul className="nav-links">
-          <li><Link to="/">Home</Link></li>
-          <li><Link to="/menu">Menu</Link></li>
+          <li><Link to="/"        className={isActive("/")}>Home</Link></li>
+          <li><Link to="/browse"  className={isActive("/browse")}>Browse</Link></li>
+          <li><Link to="/search"  className={isActive("/search")}>Search</Link></li>
+          <li><Link to="/about"   className={isActive("/about")}>About</Link></li>
+          <li><Link to="/contact" className={isActive("/contact")}>Contact</Link></li>
         </ul>
 
         <div className="auth-buttons">
+
+          {/* Dark mode toggle */}
+          <button className="theme-toggle" onClick={() => setDark(!dark)} title="Toggle dark mode">
+            {dark ? "☀️" : "🌙"}
+          </button>
+
           {isLoggedIn ? (
-            <button className="logout-btn">Logout</button>
+            <>
+              {/* Dashboard shortcut */}
+              <Link to="/dashboard" className="nav-cta-btn">Dashboard</Link>
+
+              {/* Profile button — shows initials + name, click opens dropdown */}
+              <div className="nav-profile-menu">
+                <button
+                  className="nav-profile-btn"
+                  onClick={(e) => { e.stopPropagation(); setDropdown(!dropdownOpen); }}
+                >
+                  <span className="nav-profile-avatar">{initials}</span>
+                  <span className="nav-profile-name">{userName.split(" ")[0]}</span>
+                  <span className="nav-profile-chevron">{dropdownOpen ? "▲" : "▾"}</span>
+                </button>
+
+                {dropdownOpen && (
+                  <div className="nav-dropdown">
+                    <div className="nav-dropdown-header">
+                      <span className="ndh-name">{userName}</span>
+                      <span className="ndh-email">{localStorage.getItem("userEmail")}</span>
+                    </div>
+                    <hr />
+                    <Link to="/profile"   onClick={() => setDropdown(false)}>👤 My Profile</Link>
+                    <Link to="/dashboard" onClick={() => setDropdown(false)}>📊 Dashboard</Link>
+                    <Link to="/saved"     onClick={() => setDropdown(false)}>❤️ Saved Listings</Link>
+                    <hr />
+                    <button onClick={handleLogout}>🚪 Logout</button>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <>
-              <Link to="/login"><button>Login</button></Link>
-              <Link to="/register"><button>Register</button></Link>
+              <Link to="/login"><button className="nav-login-btn">Log In</button></Link>
+              <Link to="/register"><button className="nav-register-btn">Sign Up</button></Link>
             </>
           )}
         </div>
 
       </div>
-    </div>
+    </nav>
   );
 }
 

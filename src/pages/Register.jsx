@@ -1,126 +1,71 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
+import { authService } from "../services/authService";
 
-function Register() {
+function Register({ setIsLoggedIn }) {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    confirmPassword: ""
-  });
+  const [formData, setFormData] = useState({ fullName: "", email: "", password: "", confirmPassword: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const handleSignUp = () => {
+  const handleRegister = async () => {
     if (!formData.fullName || !formData.email || !formData.password) {
-      alert("Please fill in all fields");
+      setError("Please fill in all fields.");
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      setError("Passwords do not match.");
       return;
     }
-    alert("Account created successfully!");
-    navigate("/login");
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const response = await authService.register(formData);
+      localStorage.setItem("userId", response.userId);
+      localStorage.setItem("userEmail", response.email || formData.email);
+      localStorage.setItem("userFullName", response.fullName || formData.fullName);
+      localStorage.setItem("userRole", "user");
+      localStorage.setItem("isLoggedIn", "true");
+      if (setIsLoggedIn) setIsLoggedIn(true);
+      alert("Account created! Welcome to VacanSee.");
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="auth-page">
-
-      {/* CENTER */}
       <div className="auth-container">
         <div className="auth-card">
-
+          <div className="auth-logo">🏠</div>
           <h3>Create Account</h3>
-          <p className="subtitle">Sign up to start booking amazing properties!</p>
+          <p className="subtitle">Join thousands finding their perfect boarding house</p>
 
-          {/* SOCIAL LOGIN */}
-          <button className="social google">Sign up with Google</button>
-          <button className="social facebook">Sign up with Facebook</button>
-          <button className="social apple">Sign up with Apple</button>
+          {error && <div className="error-message">{error}</div>}
 
-          <div className="divider">or</div>
+          <input name="fullName" type="text" placeholder="Full Name" value={formData.fullName} onChange={handleChange} disabled={loading} />
+          <input name="email" type="email" placeholder="Email Address" value={formData.email} onChange={handleChange} disabled={loading} />
+          <input name="password" type="password" placeholder="Password (min 6 chars)" value={formData.password} onChange={handleChange} disabled={loading} />
+          <input name="confirmPassword" type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={handleChange} disabled={loading} />
 
-          {/* FORM */}
-          <input 
-            type="text" 
-            placeholder="Full Name" 
-            name="fullName"
-            value={formData.fullName}
-            onChange={handleChange}
-          />
-          <input 
-            type="email" 
-            placeholder="Email Address" 
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-          />
-          <input 
-            type="password" 
-            placeholder="Password" 
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-          />
-          <input 
-            type="password" 
-            placeholder="Confirm Password" 
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-          />
-
-          <button className="btn-continue" onClick={handleSignUp}>Sign Up</button>
-
-          {/* TERMS */}
-          <p className="terms">
-            By signing up, you agree to our Terms of Service and Privacy Policy
-          </p>
+          <button className="btn-continue" onClick={handleRegister} disabled={loading}>
+            {loading ? "Creating account..." : "Create Account"}
+          </button>
 
           <p className="other">
             Already have an account? <Link to="/login" className="link">Log in</Link>
           </p>
-
         </div>
       </div>
-
-      {/* FOOTER */}
-      <div className="auth-footer">
-
-        <div>
-          <h4>CUSTOMER SERVICE</h4>
-          <p>Help Center</p>
-          <p>Booking Guide</p>
-          <p>Payment Methods</p>
-          <p>Refund Policy</p>
-          <p>FAQ</p>
-        </div>
-
-        <div>
-          <h4>ABOUT VACANSEE</h4>
-          <p>About Us</p>
-          <p>Careers</p>
-          <p>Policies</p>
-          <p>Privacy Policy</p>
-        </div>
-
-        <div>
-          <h4>FOLLOW US</h4>
-          <p>Facebook</p>
-          <p>Instagram</p>
-          <p>YouTube</p>
-          <p>Twitter</p>
-        </div>
-
-      </div>
-
     </div>
   );
 }

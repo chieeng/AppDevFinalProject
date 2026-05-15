@@ -1,0 +1,352 @@
+/* ================================================
+   FORM STYLES
+   Input fields, form groups, form elements
+   ================================================ */
+
+/* ================= FORM IMPROVEMENTS ================= */
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid #e8e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #f8f9fb;
+  font-weight: 500;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #14b8a6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 150px;
+}
+
+.form-input::placeholder {
+  color: #b0b3cc;
+  font-weight: 500;
+}
+
+/* ================= INQUIRY FORM ================= */
+.inquiry-form h3 {
+  margin-bottom: 28px;
+  color: #2c3e50;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.inquiry-form input {
+  width: 100%;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  border: 2px solid #e8e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #f8f9fb;
+  font-weight: 500;
+}
+
+.inquiry-form input::placeholder {
+  color: #9a9aa9;
+  font-weight: 500;
+}
+
+.inquiry-form input:focus {
+  outline: none;
+  border-color: #14b8a6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15);
+}
+
+.inquiry-form textarea {
+  width: 100%;
+  height: 160px;
+  padding: 16px 18px;
+  border: 2px solid #e8e8f0;
+  border-radius: 12px;
+  resize: vertical;
+  font-family: inherit;
+  margin-bottom: 20px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #f8f9fb;
+  font-weight: 500;
+}
+
+.inquiry-form textarea::placeholder {
+  color: #9a9aa9;
+  font-weight: 500;
+}
+
+.inquiry-form textarea:focus {
+  outline: none;
+  border-color: #14b8a6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15);
+}
+
+.inquiry-form button {
+  width: 100%;
+  padding: 18px;
+  background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 800;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(20, 184, 166, 0.25);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.inquiry-form button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: left 0.3s ease;
+}
+
+.inquiry-form button:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(20, 184, 166, 0.4);
+}
+
+.inquiry-form button:hover::before {
+  left: 100%;
+}
+
+.inquiry-form button:active {
+  transform: translateY(-1px);
+}
+
+.success-message {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: white;
+  padding: 20px 24px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  text-align: center;
+  font-weight: 700;
+  animation: slideIn 0.4s ease-out;
+  box-shadow: 0 8px 24px rgba(67, 233, 123, 0.2);
+  letter-spacing: 0.3px;
+}
+
+/* ================= BOOKING FORM ================= */
+.booking-form {
+  margin-top: 35px;
+  background: white;
+  padding: 40px;
+  border-radius: 14px;
+  box-shadow: 0 10px 35px rgba(0,0,0,0.1);
+  max-width: 450px;
+  border: 2px solid transparent;
+  animation: slideInUp 0.6s ease-out;
+}
+
+.booking-form h3 {
+  margin-bottom: 30px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #2c3e50;
+  letter-spacing: -0.3px;
+}
+
+.booking-form label {
+  display: block;
+  margin-top: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  letter-spacing: 0.2px;
+}
+
+.booking-form input {
+  width: 100%;
+  padding: 14px 16px;
+  margin-top: 6px;
+  border-radius: 10px;
+  border: 2px solid #e8e8f0;
+  background: #f8f9fb;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.booking-form input:focus {
+  outline: none;
+  border-color: #14b8a6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15);
+}
+
+.total {
+  margin: 24px 0 16px 0;
+  font-weight: 800;
+  color: #14b8a6;
+  font-size: 18px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-radius: 10px;
+  border-left: 4px solid #14b8a6;
+}
+
+.booking-form button {
+  width: 100%;
+  margin-top: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 20px rgba(20, 184, 166, 0.25);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.booking-form button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: left 0.3s ease;
+}
+
+.booking-form button:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 35px rgba(20, 184, 166, 0.4);
+}
+
+.booking-form button:hover::before {
+  left: 100%;
+}
+
+.booking-form button:active {
+  transform: translateY(-1px);
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .booking-form {
+    max-width: 100%;
+    padding: 32px 24px;
+    margin-top: 28px;
+  }
+
+  .booking-form h3 {
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+
+  .booking-form label {
+    font-size: 13px;
+    margin-top: 12px;
+  }
+
+  .booking-form input {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .total {
+    margin: 18px 0 12px 0;
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  .booking-form button {
+    padding: 14px;
+    font-size: 14px;
+    margin-top: 16px;
+  }
+
+  .inquiry-form h3 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .inquiry-form input,
+  .inquiry-form textarea {
+    padding: 13px 14px;
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+
+  .inquiry-form button {
+    padding: 14px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+}

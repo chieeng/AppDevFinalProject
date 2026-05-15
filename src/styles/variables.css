@@ -1,0 +1,102 @@
+/* ================================================
+   VARIABLES & THEME
+   ================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+
+:root {
+  /* Colors */
+  --color-primary:        #0fa492;
+  --color-primary-alt:    #2563eb;
+  --color-secondary:      #1e293b;
+  --color-light:          #f0f4f8;
+  --color-light-bg:       #f8fafc;
+  --color-white:          #ffffff;
+  --color-surface:        #ffffff;
+  --color-surface-2:      #f8fafc;
+  --color-text-primary:   #1e293b;
+  --color-text-secondary: #475569;
+  --color-text-tertiary:  #64748b;
+  --color-text-muted:     #94a3b8;
+  --color-text-hint:      #cbd5e1;
+  --color-border:         #e2e8f0;
+  --color-accent:         #f59e0b;
+
+  /* Spacing */
+  --spacing-xs:  8px;
+  --spacing-sm:  12px;
+  --spacing-md:  20px;
+  --spacing-lg:  35px;
+  --spacing-xl:  50px;
+  --spacing-2xl: 100px;
+
+  /* Border Radius */
+  --radius-sm:   10px;
+  --radius-md:   14px;
+  --radius-lg:   18px;
+  --radius-xl:   24px;
+  --radius-full: 999px;
+
+  /* Font Sizes */
+  --font-size-xs:   12px;
+  --font-size-sm:   14px;
+  --font-size-base: 16px;
+  --font-size-md:   18px;
+  --font-size-lg:   20px;
+  --font-size-xl:   26px;
+  --font-size-2xl:  42px;
+  --font-size-3xl:  56px;
+
+  /* Font Weights */
+  --font-weight-normal:    400;
+  --font-weight-medium:    500;
+  --font-weight-semibold:  600;
+  --font-weight-bold:      700;
+  --font-weight-extrabold: 800;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.25s ease;
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #0fa492 0%, #2563eb 100%);
+  --gradient-light:   linear-gradient(to bottom, #f8fafc 0%, white 100%);
+  --gradient-card:    linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+
+  /* Shadows */
+  --shadow-xs: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 4px 12px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg: 0 16px 48px rgba(15,164,146,0.18), 0 6px 20px rgba(0,0,0,0.06);
+  --shadow-xl: 0 28px 64px rgba(15,164,146,0.22), 0 12px 28px rgba(0,0,0,0.07);
+
+  /* Z-index */
+  --z-navbar:   100;
+  --z-dropdown:  50;
+  --z-modal:    200;
+}
+
+/* ================================================
+   DARK MODE — toggled via data-theme="dark" on <html>
+   ================================================ */
+[data-theme="dark"] {
+  --color-light:          #0f172a;
+  --color-light-bg:       #1e293b;
+  --color-white:          #1e293b;
+  --color-surface:        #1e293b;
+  --color-surface-2:      #0f172a;
+  --color-text-primary:   #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-tertiary:  #94a3b8;
+  --color-text-muted:     #64748b;
+  --color-text-hint:      #334155;
+  --color-border:         #334155;
+  --color-secondary:      #0f172a;
+
+  --shadow-xs: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-sm: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.4);
+  --shadow-xl: 0 28px 64px rgba(0,0,0,0.5);
+}
