@@ -1,11 +1,11 @@
 package com.vacanSee.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,20 +14,23 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PropertyReview {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "property_id", nullable = false)
+    @JsonIgnoreProperties({"owner","bookings","reviews","favorites","hibernateLazyInitializer"})
     private Property property;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "reviewer_id", nullable = false)
+    @JsonIgnoreProperties({"password","bookings","inquiries","favorites","hibernateLazyInitializer"})
+    private User reviewer;
 
     @Column(nullable = false)
-    private Integer rating;
+    private Integer rating;  // 1-5
 
     @Column(columnDefinition = "TEXT")
     private String comment;
@@ -35,7 +38,4 @@ public class PropertyReview {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
 }

@@ -1,16 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "../components/Card";
 import cover2 from "../images/cover-2.png";
-import { getAllListings } from "../data/appData";
+import { getAllListings, loadPropertiesFromBackend } from "../data/appData";
 
 function Browse() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortPrice, setSortPrice] = useState("");
-  const [filterType, setFilterType] = useState("");
+  const [allListings, setAllListings] = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [searchTerm, setSearchTerm]   = useState("");
+  const [sortPrice, setSortPrice]     = useState("");
+  const [filterType, setFilterType]   = useState("");
   const [filterBedrooms, setFilterBedrooms] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode]       = useState("grid");
 
-  const allListings = getAllListings();
+  // Always fetch fresh from backend when page mounts
+  useEffect(() => {
+    const fetchListings = async () => {
+      setLoading(true);
+      await loadPropertiesFromBackend();   // updates vs_properties cache
+      setAllListings(getAllListings());    // read the updated cache
+      setLoading(false);
+    };
+    fetchListings();
+  }, []);
+
   const propertyTypes = [...new Set(allListings.map((p) => p.propertyType).filter(Boolean))];
 
   let results = allListings.filter((item) => {
@@ -21,27 +33,13 @@ function Browse() {
     );
   });
 
-  if (filterType) {
-    results = results.filter((p) => p.propertyType === filterType);
-  }
+  if (filterType)     results = results.filter((p) => p.propertyType === filterType);
+  if (filterBedrooms) results = results.filter((p) => Number(p.bedrooms) >= parseInt(filterBedrooms));
 
-  if (filterBedrooms) {
-    results = results.filter((p) => p.bedrooms >= parseInt(filterBedrooms));
-  }
+  if (sortPrice === "low-high") results = [...results].sort((a, b) => (a.price || 0) - (b.price || 0));
+  else if (sortPrice === "high-low") results = [...results].sort((a, b) => (b.price || 0) - (a.price || 0));
 
-  if (sortPrice === "low-high") {
-    results = [...results].sort((a, b) => (a.price || 0) - (b.price || 0));
-  } else if (sortPrice === "high-low") {
-    results = [...results].sort((a, b) => (b.price || 0) - (a.price || 0));
-  }
-
-  const resetFilters = () => {
-    setSearchTerm("");
-    setSortPrice("");
-    setFilterType("");
-    setFilterBedrooms("");
-  };
-
+  const resetFilters = () => { setSearchTerm(""); setSortPrice(""); setFilterType(""); setFilterBedrooms(""); };
   const hasFilters = searchTerm || sortPrice || filterType || filterBedrooms;
 
   return (
@@ -57,34 +55,18 @@ function Browse() {
         <aside className="browse-sidebar">
           <div className="sidebar-box">
             <h3>Search</h3>
-            <input
-              type="text"
-              placeholder="Title or city..."
-              className="sidebar-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <input type="text" placeholder="Title or city..." className="sidebar-input" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           <div className="sidebar-box">
             <h3>Property Type</h3>
-            <select
-              className="sidebar-input"
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-            >
+            <select className="sidebar-input" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
               <option value="">All Types</option>
-              {propertyTypes.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
+              {propertyTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div className="sidebar-box">
             <h3>Bedrooms</h3>
-            <select
-              className="sidebar-input"
-              value={filterBedrooms}
-              onChange={(e) => setFilterBedrooms(e.target.value)}
-            >
+            <select className="sidebar-input" value={filterBedrooms} onChange={(e) => setFilterBedrooms(e.target.value)}>
               <option value="">Any</option>
               <option value="1">1+ Bedroom</option>
               <option value="2">2+ Bedrooms</option>
@@ -94,21 +76,13 @@ function Browse() {
           </div>
           <div className="sidebar-box">
             <h3>Sort by Price</h3>
-            <select
-              className="sidebar-input"
-              value={sortPrice}
-              onChange={(e) => setSortPrice(e.target.value)}
-            >
+            <select className="sidebar-input" value={sortPrice} onChange={(e) => setSortPrice(e.target.value)}>
               <option value="">Default</option>
               <option value="low-high">Low to High</option>
               <option value="high-low">High to Low</option>
             </select>
           </div>
-          {hasFilters && (
-            <button className="clear-filters-btn" onClick={resetFilters}>
-              Clear Filters
-            </button>
-          )}
+          {hasFilters && <button className="clear-filters-btn" onClick={resetFilters}>Clear Filters</button>}
         </aside>
 
         <main className="browse-main">
@@ -117,24 +91,14 @@ function Browse() {
               <strong>{results.length}</strong> {results.length === 1 ? "property" : "properties"} found
             </p>
             <div className="view-toggle">
-              <button
-                className={viewMode === "grid" ? "active" : ""}
-                onClick={() => setViewMode("grid")}
-                title="Grid View"
-              >
-                Grid
-              </button>
-              <button
-                className={viewMode === "list" ? "active" : ""}
-                onClick={() => setViewMode("list")}
-                title="List View"
-              >
-                List
-              </button>
+              <button className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")}>Grid</button>
+              <button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}>List</button>
             </div>
           </div>
 
-          {results.length === 0 ? (
+          {loading ? (
+            <div style={{ padding: "60px", textAlign: "center", color: "var(--color-text-muted)" }}>Loading properties...</div>
+          ) : results.length === 0 ? (
             <div className="no-results-box">
               <p>No properties found matching your filters.</p>
               <button onClick={resetFilters}>Clear Filters</button>
@@ -142,16 +106,11 @@ function Browse() {
           ) : (
             <div className={viewMode === "grid" ? "cards" : "cards-list"}>
               {results.map((item) => (
-                <Card
-                  key={item.id}
-                  id={item.id}
-                  title={item.title}
-                  location={item.city || item.location}
-                  price={item.price}
-                  bedrooms={item.bedrooms}
-                  bathrooms={item.bathrooms}
-                  propertyType={item.propertyType} status={item.status} featuredImage={item.featuredImage}
-                />
+                <Card key={item.id} id={item.id} title={item.title}
+                  location={item.city || item.location} price={item.price}
+                  bedrooms={item.bedrooms} bathrooms={item.bathrooms}
+                  propertyType={item.propertyType} status={item.status}
+                  featuredImage={item.featuredImage} />
               ))}
             </div>
           )}

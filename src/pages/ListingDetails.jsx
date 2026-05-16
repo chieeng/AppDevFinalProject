@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { getListingById, getAllListings } from "../data/appData";
+import { getListingById, getAllListings, loadPropertiesFromBackend } from "../data/appData";
 import { addBooking, addMessage, toggleSaved, getSavedIds } from "../data/adminData";
 import listing1 from "../images/listing-1.jpg";
 import listing2 from "../images/listing-2.jpg";
@@ -36,6 +36,13 @@ function ListingDetails({ isLoggedIn }) {
   const [data, setData]     = useState(null);
   const [isSaved, setIsSaved] = useState(false);
 
+
+  const [reviews, setReviews]         = useState([]);
+  const [reviewText, setReviewText]   = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const [reviewSuccess, setReviewSuccess] = useState(false);
   const currentUserId   = localStorage.getItem("userId");
   const currentUserName = localStorage.getItem("userFullName");
 
@@ -44,6 +51,11 @@ function ListingDetails({ isLoggedIn }) {
       || getAllListings().find((l) => String(l.id) === id);
     setData(listing || null);
     setIsSaved(getSavedIds().includes(parseInt(id)));
+    // Fetch reviews for this property
+    fetch(`http://localhost:8000/api/reviews/property/${id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setReviews(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, [id]);
 
   const toggleSave_ = () => {
@@ -52,6 +64,37 @@ function ListingDetails({ isLoggedIn }) {
   };
 
   // ── STEP 1: User confirms the booking ────────────────────────
+
+  const handleSubmitReview = async () => {
+    if (!isLoggedIn) { alert("Please log in to leave a review."); return; }
+    if (!reviewText.trim()) { setReviewError("Please write a review."); return; }
+    setReviewLoading(true);
+    setReviewError("");
+    try {
+      const res = await fetch("http://localhost:8000/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          propertyId: Number(data.id),
+          userId:     Number(currentUserId),
+          rating:     reviewRating,
+          comment:    reviewText.trim(),
+        }),
+      });
+      const saved = await res.json();
+      if (!res.ok) throw new Error(saved.message || "Failed to submit review");
+      setReviews((prev) => [saved, ...prev]);
+      setReviewText("");
+      setReviewRating(5);
+      setReviewSuccess(true);
+      setTimeout(() => setReviewSuccess(false), 3000);
+    } catch (err) {
+      setReviewError(err.message || "Failed to submit review.");
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
   const handleBooking = async () => {
     if (!isLoggedIn) { alert("Please log in first!"); navigate("/login"); return; }
     if (!checkIn)    { alert("Please select a move-in date."); return; }
@@ -205,6 +248,81 @@ function ListingDetails({ isLoggedIn }) {
               <div className="info-row"><span>Area</span><span>{data.areaSqft ? `${data.areaSqft} sqft` : "—"}</span></div>
               <div className="info-row"><span>Listed</span><span>{new Date(data.createdAt || Date.now()).toLocaleDateString()}</span></div>
             </div>
+          </div>
+
+
+          {/* REVIEWS SECTION */}
+          <div className="section">
+            <h3>⭐ Reviews & Ratings</h3>
+
+            {/* Average rating */}
+            {reviews.length > 0 && (
+              <div className="reviews-avg">
+                <span className="reviews-avg-score">
+                  {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}
+                </span>
+                <span className="reviews-avg-stars">
+                  {"★".repeat(Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length))}
+                  {"☆".repeat(5 - Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length))}
+                </span>
+                <span className="reviews-avg-count">({reviews.length} review{reviews.length !== 1 ? "s" : ""})</span>
+              </div>
+            )}
+
+            {/* Existing reviews */}
+            <div className="reviews-list">
+              {reviews.length === 0 ? (
+                <p style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>No reviews yet. Be the first to review!</p>
+              ) : (
+                reviews.map((r, i) => (
+                  <div key={r.id || i} className="review-item">
+                    <div className="review-header">
+                      <div className="review-avatar">{(r.userName || "U")[0].toUpperCase()}</div>
+                      <div>
+                        <div className="review-name">{r.userName || "Anonymous"}</div>
+                        <div className="review-stars">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
+                      </div>
+                      <div className="review-date">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ""}</div>
+                    </div>
+                    <p className="review-comment">{r.comment}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Write a review */}
+            {isLoggedIn && (
+              <div className="review-form">
+                <h4>Write a Review</h4>
+                <div className="review-rating-pick">
+                  <span>Rating:</span>
+                  {[1,2,3,4,5].map((star) => (
+                    <button
+                      key={star}
+                      className={`star-btn ${star <= reviewRating ? "active" : ""}`}
+                      onClick={() => setReviewRating(star)}
+                    >★</button>
+                  ))}
+                </div>
+                <textarea
+                  placeholder="Share your experience with this property..."
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  rows={3}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid var(--color-border)", fontSize: "14px", fontFamily: "inherit", resize: "vertical", background: "var(--color-light-bg)", color: "var(--color-text-primary)", boxSizing: "border-box" }}
+                />
+                {reviewError   && <div className="error-message">{reviewError}</div>}
+                {reviewSuccess && <div className="booking-success" style={{ padding: "10px", marginTop: "8px" }}>✅ Review submitted!</div>}
+                <button
+                  className="btn-continue"
+                  onClick={handleSubmitReview}
+                  disabled={reviewLoading || !reviewText.trim()}
+                  style={{ marginTop: "10px" }}
+                >
+                  {reviewLoading ? "Submitting..." : "Submit Review"}
+                </button>
+              </div>
+            )}
           </div>
 
         </div>

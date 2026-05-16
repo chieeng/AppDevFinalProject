@@ -1,25 +1,36 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Hero from "../components/Hero";
 import Card from "../components/Card";
-import { getAllListings } from "../data/appData";
+import { getAllListings, loadPropertiesFromBackend } from "../data/appData";
 
 function Home() {
   const [activeFilter, setActiveFilter] = useState("All");
-  const allProperties = getAllListings();
+  const [allProperties, setAllProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Always fetch fresh properties from backend on mount
+  useEffect(() => {
+    const fetch_ = async () => {
+      setLoading(true);
+      await loadPropertiesFromBackend();
+      setAllProperties(getAllListings());
+      setLoading(false);
+    };
+    fetch_();
+  }, []);
 
   // Boarding-house-appropriate quick filters
   const filters = [
     { label: "All",          check: () => true },
-    { label: "With WiFi",    check: (p) => p.hasWifi || p.hasInternet },
-    { label: "With Meals",   check: (p) => p.hasMeals || p.mealsIncluded },
+    { label: "With WiFi",    check: (p) => p.hasWifi },
+    { label: "With Meals",   check: (p) => p.hasMeals },
     { label: "With Parking", check: (p) => p.hasParking },
     { label: "With Gym",     check: (p) => p.hasGym },
     { label: "Pet Friendly", check: (p) => p.petFriendly },
   ];
 
   const activeCheckFn = filters.find((f) => f.label === activeFilter)?.check || (() => true);
-
   const filtered = activeFilter === "All"
     ? allProperties.slice(0, 6)
     : allProperties.filter(activeCheckFn).slice(0, 6);
@@ -53,7 +64,6 @@ function Home() {
     <div>
       <Hero />
 
-      {/* STATS STRIP */}
       <div className="stats-section">
         <div className="container">
           <div className="stats-grid">
@@ -68,49 +78,44 @@ function Home() {
         </div>
       </div>
 
-      {/* FEATURED LISTINGS */}
       <section className="featured">
         <div className="container">
           <div className="section-header">
             <h2>Featured Boarding Houses</h2>
             <p>Handpicked properties loved by our tenants</p>
           </div>
-
-          {/* BOARDING HOUSE QUICK FILTERS */}
           <div className="filter-tabs">
             {filters.map((f) => (
-              <button
-                key={f.label}
-                className={`filter-tab ${activeFilter === f.label ? "active" : ""}`}
-                onClick={() => setActiveFilter(f.label)}
-              >
+              <button key={f.label} className={`filter-tab ${activeFilter === f.label ? "active" : ""}`} onClick={() => setActiveFilter(f.label)}>
                 {f.label}
               </button>
             ))}
           </div>
-
-          <div className="cards">
-            {filtered.length === 0 ? (
-              <p style={{ padding: "40px", textAlign: "center", gridColumn: "1/-1", color: "var(--color-text-muted)" }}>
-                No properties match this filter right now.
-              </p>
-            ) : (
-              filtered.map((p) => (
-                <Card key={p.id} id={p.id} title={p.title}
-                  location={p.city || p.location} price={p.price}
-                  bedrooms={p.bedrooms} bathrooms={p.bathrooms}
-                  propertyType={p.propertyType} status={p.status} featuredImage={p.featuredImage} />
-              ))
-            )}
-          </div>
-
+          {loading ? (
+            <div style={{ padding: "60px", textAlign: "center", color: "var(--color-text-muted)" }}>Loading properties...</div>
+          ) : (
+            <div className="cards">
+              {filtered.length === 0 ? (
+                <p style={{ padding: "40px", textAlign: "center", gridColumn: "1/-1", color: "var(--color-text-muted)" }}>
+                  No properties match this filter right now.
+                </p>
+              ) : (
+                filtered.map((p) => (
+                  <Card key={p.id} id={p.id} title={p.title}
+                    location={p.city || p.location} price={p.price}
+                    bedrooms={p.bedrooms} bathrooms={p.bathrooms}
+                    propertyType={p.propertyType} status={p.status}
+                    featuredImage={p.featuredImage} />
+                ))
+              )}
+            </div>
+          )}
           <div className="view-all-btn">
             <Link to="/browse">View All Properties →</Link>
           </div>
         </div>
       </section>
 
-      {/* AMENITIES */}
       <section className="amenities-strip">
         <div className="container">
           <div className="section-header">
@@ -128,7 +133,6 @@ function Home() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
       <section className="how-it-works">
         <div className="container">
           <div className="section-header">
@@ -148,7 +152,6 @@ function Home() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="cta-section">
         <div className="container">
           <h2>Ready to Find Your Perfect Stay?</h2>

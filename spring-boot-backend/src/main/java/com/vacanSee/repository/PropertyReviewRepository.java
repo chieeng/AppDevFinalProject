@@ -8,5 +8,5 @@ import java.util.List;
 @Repository
 public interface PropertyReviewRepository extends JpaRepository<PropertyReview, Long> {
     List<PropertyReview> findByPropertyId(Long propertyId);
-    List<PropertyReview> findByUserId(Long userId);
+    List<PropertyReview> findByReviewerId(Long reviewerId);
 }

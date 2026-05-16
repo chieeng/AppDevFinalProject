@@ -2870,3 +2870,60 @@
   object-fit: cover;
   display: block;
 }
+
+/* ================================================
+   REVIEWS & RATINGS  (ListingDetails)
+   ================================================ */
+.reviews-avg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+.reviews-avg-score {
+  font-size: 36px;
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+.reviews-avg-stars { font-size: 20px; color: #f59e0b; }
+.reviews-avg-count { font-size: 14px; color: var(--color-text-muted); }
+
+.reviews-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+
+.review-item {
+  background: var(--color-light-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.review-avatar {
+  width: 36px; height: 36px; min-width: 36px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: white;
+  font-size: 14px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.review-name  { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
+.review-stars { font-size: 13px; color: #f59e0b; }
+.review-date  { font-size: 12px; color: var(--color-text-muted); margin-left: auto; }
+.review-comment { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; margin: 0; }
+
+.review-form { border-top: 1px solid var(--color-border); padding-top: 20px; margin-top: 8px; }
+.review-form h4 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--color-text-primary); }
+
+.review-rating-pick { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
+.star-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 24px; color: #d1d5db;
+  transition: color 0.15s ease; padding: 0; line-height: 1;
+}
+.star-btn.active { color: #f59e0b; }
+.star-btn:hover  { color: #f59e0b; }

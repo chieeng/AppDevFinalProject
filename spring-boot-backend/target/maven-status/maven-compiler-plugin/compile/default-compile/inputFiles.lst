@@ -9,6 +9,7 @@ D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\repository\PropertyFavoriteRepository.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\exception\GlobalExceptionHandler.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\model\PropertyImage.java
+D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\dto\ReviewDTO.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\dto\RegisterRequestDTO.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\model\User.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\controller\HealthController.java
@@ -26,6 +27,7 @@ D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\dto\AuthResponseDTO.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\model\PropertyReview.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\repository\BookingRepository.java
+D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\controller\ReviewController.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\controller\AuthController.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\dto\BookingDTO.java
 D:\School Works\PracticeCodes\React\appdevfinalproj\spring-boot-backend\src\main\java\com\vacanSee\VacanSeeApplication.java
