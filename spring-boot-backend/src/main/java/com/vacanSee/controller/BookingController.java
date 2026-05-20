@@ -67,6 +67,17 @@ public class BookingController {
                     .body(Map.of("message", "User not found (id=" + booking.getUser().getId() + ")"));
         }
 
+        // Prevent double booking: block if user already has a pending or confirmed booking for this property
+        // Allow rebooking after rejection or cancellation
+        boolean alreadyBooked = bookingRepository
+                .findByUserIdAndPropertyId(user.get().getId(), property.get().getId())
+                .stream()
+                .anyMatch(b -> "pending".equals(b.getStatus()) || "confirmed".equals(b.getStatus()));
+        if (alreadyBooked) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "You already have an active booking for this property."));
+        }
+
         booking.setProperty(property.get());
         booking.setUser(user.get());
         booking.setStatus(booking.getStatus() != null ? booking.getStatus() : "pending");
@@ -117,6 +128,28 @@ public class BookingController {
         return ResponseEntity.ok(toDTO(bookingRepository.save(b)));
     }
 
+    // ── PATCH cancel — tenant cancels their own booking ──
+    // Only allowed if status is "pending" or "confirmed"; already-cancelled bookings are rejected
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelBooking(@PathVariable Long id) {
+        var opt = bookingRepository.findById(id);
+        if (opt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Booking not found"));
+        }
+        Booking b = opt.get();
+        if ("cancelled".equals(b.getStatus())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "Booking is already cancelled"));
+        }
+        if ("rejected".equals(b.getStatus())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "Rejected bookings cannot be cancelled"));
+        }
+        b.setStatus("cancelled");
+        return ResponseEntity.ok(toDTO(bookingRepository.save(b)));
+    }
+
     // ── DELETE ────────────────────────────────────────
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteBooking(@PathVariable Long id) {
@@ -142,6 +175,19 @@ public class BookingController {
         List<BookingDTO> dtos = bookingRepository.findByPropertyId(propertyId)
                 .stream().map(this::toDTO).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
+    }
+
+    // ── GET check confirmed booking (used by review gate) ─────────────────
+    // Returns { hasConfirmedBooking: true/false }
+    @GetMapping("/check")
+    public ResponseEntity<?> checkConfirmedBooking(
+            @RequestParam Long userId,
+            @RequestParam Long propertyId) {
+        boolean has = bookingRepository
+                .findByUserIdAndPropertyId(userId, propertyId)
+                .stream()
+                .anyMatch(b -> "confirmed".equals(b.getStatus()));
+        return ResponseEntity.ok(Map.of("hasConfirmedBooking", has));
     }
 
     // ── GET by status ─────────────────────────────────

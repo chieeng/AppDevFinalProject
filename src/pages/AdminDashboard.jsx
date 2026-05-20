@@ -24,6 +24,8 @@ const BLANK = {
 function AdminDashboard() {
   const navigate   = useNavigate();
   const [tab, setTab] = useState("listings");
+  const userRole = localStorage.getItem("userRole"); // "admin" or "landlord"
+  const isLandlord = userRole === "landlord";
 
   // ── Listings state ──
   const [listings, setListings]     = useState([]);
@@ -46,26 +48,37 @@ function AdminDashboard() {
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    if (localStorage.getItem("userRole") !== "admin") { navigate("/login"); return; }
+    const role = localStorage.getItem("userRole");
+    if (role !== "admin" && role !== "landlord") { navigate("/login"); return; }
     loadAll();
   }, []);
 
   const loadAll = async () => {
     setLoading(true);
+    const ownerId = localStorage.getItem("userId");
+    const role    = localStorage.getItem("userRole");
+
     const [backendListings, b, m] = await Promise.all([
       getAdminListings(),
       getBookings(),
       getMessages(),
     ]);
 
-    // Also include any listings that failed to reach the backend (marked _localOnly)
-    // so admin can still see them and retry
     const localOnly = JSON.parse(localStorage.getItem("vs_admin_listings") || "[]").filter((l) => l._localOnly);
-    const merged = [...localOnly, ...backendListings];
+    let merged = [...localOnly, ...backendListings];
 
-    setListings(merged);
-    setBookings(b);
-    setMessages(m);
+    // Landlords only see their own listings, bookings, and messages
+    if (role === "landlord") {
+      merged = merged.filter((l) => String(l.ownerId) === String(ownerId));
+      const myPropertyIds = new Set(merged.map((l) => String(l.id)));
+      setListings(merged);
+      setBookings(b.filter((bk) => myPropertyIds.has(String(bk.propertyId))));
+      setMessages(m.filter((msg) => myPropertyIds.has(String(msg.propertyId))));
+    } else {
+      setListings(merged);
+      setBookings(b);
+      setMessages(m);
+    }
     setLoading(false);
   };
 
@@ -178,8 +191,8 @@ function AdminDashboard() {
       <div className="admin-header">
         <div className="container admin-header-inner">
           <div>
-            <h1>Admin Dashboard</h1>
-            <p>VacanSee Property Management System</p>
+            <h1>{isLandlord ? "Landlord Dashboard" : "Admin Dashboard"}</h1>
+            <p>{isLandlord ? "Manage your boarding house listings" : "VacanSee Property Management System"}</p>
           </div>
           <div className="admin-header-stats">
             <div className="admin-stat-pill"><span>{listings.length}</span> listings</div>

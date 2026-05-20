@@ -2,15 +2,19 @@ import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { authService } from "../services/authService";
 
-// Login page — handles both admin and regular user login
-// IMPORTANT: Admin login goes through the backend to get the real database ID.
-// This ensures ownerId is correct when the admin creates property listings.
 function Login({ setIsLoggedIn }) {
   const navigate  = useNavigate();
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
+
+  // Forgot password state
+  const [showForgot, setShowForgot]   = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotResult, setForgotResult]   = useState(null);
+  const [forgotError, setForgotError]     = useState("");
 
   const ADMIN_EMAIL = "admin@vacansee.com";
 
@@ -20,26 +24,52 @@ function Login({ setIsLoggedIn }) {
     setError("");
 
     try {
-      // All logins go through the backend — this gives us the real DB userId
       const response = await authService.login(email, password);
 
-      // Store real DB userId — critical for bookings, inquiries, and property creation
       localStorage.setItem("userId",       String(response.userId));
       localStorage.setItem("userEmail",    response.email    || email);
       localStorage.setItem("userFullName", response.fullName || "User");
       localStorage.setItem("isLoggedIn",   "true");
 
-      // Admin is identified by email — role stored separately
-      const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-      localStorage.setItem("userRole", isAdmin ? "admin" : "user");
+      // Determine role: backend now returns role, but admin email overrides
+      const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      const backendRole  = (response.role || "TENANT").toUpperCase();
+      let storeRole;
+      if (isAdminEmail) {
+        storeRole = "admin";
+      } else if (backendRole === "LANDLORD") {
+        storeRole = "landlord";
+      } else {
+        storeRole = "user";
+      }
+      localStorage.setItem("userRole", storeRole);
 
       setIsLoggedIn(true);
-      navigate(isAdmin ? "/admin" : "/dashboard");
+      if (storeRole === "admin" || storeRole === "landlord") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
 
     } catch (err) {
       setError(err.message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) { setForgotError("Please enter your email address."); return; }
+    setForgotLoading(true);
+    setForgotError("");
+    setForgotResult(null);
+    try {
+      const res = await authService.forgotPassword(forgotEmail.trim());
+      setForgotResult(res);
+    } catch (err) {
+      setForgotError(err.message || "Failed to reset password.");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -74,6 +104,17 @@ function Login({ setIsLoggedIn }) {
             disabled={loading}
           />
 
+          <div style={{ textAlign: "right", marginBottom: "8px" }}>
+            <button
+              type="button"
+              className="link"
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--color-primary)", padding: 0 }}
+              onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotResult(null); setForgotError(""); }}
+            >
+              Forgot Password?
+            </button>
+          </div>
+
           <button className="btn-continue" onClick={handleLogin} disabled={loading}>
             {loading ? "Logging in..." : "Log In"}
           </button>
@@ -83,6 +124,66 @@ function Login({ setIsLoggedIn }) {
           </p>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgot && (
+        <div className="modal-overlay" onClick={() => setShowForgot(false)}>
+          <div className="modal-content" style={{ maxWidth: "420px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>Reset Password</h2>
+                <p>Enter your email to receive a temporary password</p>
+              </div>
+              <button className="close-btn" onClick={() => setShowForgot(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {!forgotResult ? (
+                <>
+                  <input
+                    type="email"
+                    placeholder="Your email address"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    disabled={forgotLoading}
+                    style={{ width: "100%", marginBottom: "12px" }}
+                  />
+                  {forgotError && <div className="error-message">{forgotError}</div>}
+                </>
+              ) : (
+                <div style={{ textAlign: "center", padding: "10px 0" }}>
+                  <div style={{ fontSize: "36px", marginBottom: "10px" }}>✅</div>
+                  <p style={{ marginBottom: "12px", color: "var(--color-text-secondary)" }}>{forgotResult.message}</p>
+                  {forgotResult.tempPassword && (
+                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "14px", marginTop: "10px" }}>
+                      <div style={{ fontSize: "12px", color: "#059669", marginBottom: "6px", fontWeight: 600 }}>YOUR TEMPORARY PASSWORD</div>
+                      <div style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "2px", color: "#065f46", fontFamily: "monospace" }}>
+                        {forgotResult.tempPassword}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "8px" }}>
+                        Use this to log in, then change your password in Profile settings.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              {!forgotResult ? (
+                <>
+                  <button className="btn-cancel" onClick={() => setShowForgot(false)}>Cancel</button>
+                  <button className="btn-send" onClick={handleForgotPassword} disabled={forgotLoading}>
+                    {forgotLoading ? "Sending..." : "Reset Password"}
+                  </button>
+                </>
+              ) : (
+                <button className="btn-continue" onClick={() => setShowForgot(false)} style={{ width: "100%" }}>
+                  Close & Log In
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

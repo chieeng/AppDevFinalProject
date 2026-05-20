@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { getBookingsByUser, getSavedIds } from "../data/adminData";
+import { getBookingsByUser, getSavedIds, cancelBooking } from "../data/adminData";
 import { getAllListings } from "../data/appData";
 import Card from "../components/Card";
 
@@ -32,9 +32,25 @@ function Dashboard() {
     fetchBookings();
   }, [userId]);
 
+  const [cancellingId, setCancellingId] = useState(null);
+
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+    setCancellingId(bookingId);
+    try {
+      await cancelBooking(bookingId);
+      setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status: "cancelled" } : b));
+    } catch (err) {
+      alert(err.message || "Failed to cancel booking.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const statusStyle = (status) => {
     if (status === "confirmed") return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
     if (status === "rejected")  return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
+    if (status === "cancelled") return { bg: "#f3f4f6", color: "#6b7280", border: "#d1d5db" };
     return { bg: "#fffbeb", color: "#d97706", border: "#fde68a" };
   };
 
@@ -109,15 +125,31 @@ function Dashboard() {
                         <span>💰 ₱{(b.total || 0).toLocaleString()}</span>
                       </div>
                     </div>
-                    <span
-                      className="booking-status-pill"
-                      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
-                    >
-                      {b.status === "pending"   && "⏳ "}
-                      {b.status === "confirmed" && "✅ "}
-                      {b.status === "rejected"  && "❌ "}
-                      {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+                      <span
+                        className="booking-status-pill"
+                        style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
+                      >
+                        {b.status === "pending"   && "⏳ "}
+                        {b.status === "confirmed" && "✅ "}
+                        {b.status === "rejected"  && "❌ "}
+                        {b.status === "cancelled" && "🚫 "}
+                        {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                      </span>
+                      {(b.status === "pending" || b.status === "confirmed") && (
+                        <button
+                          onClick={() => handleCancelBooking(b.id)}
+                          disabled={cancellingId === b.id}
+                          style={{
+                            background: "none", border: "1px solid #fecaca", color: "#dc2626",
+                            borderRadius: "6px", padding: "4px 10px", fontSize: "12px",
+                            cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap"
+                          }}
+                        >
+                          {cancellingId === b.id ? "Cancelling..." : "Cancel"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

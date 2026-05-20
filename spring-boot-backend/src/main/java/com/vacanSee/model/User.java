@@ -33,6 +33,9 @@ public class User {
     @Column(name = "profile_image")
     private String profileImage;
 
+    @Column(nullable = false)
+    private String role = "TENANT"; // TENANT, LANDLORD, ADMIN
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

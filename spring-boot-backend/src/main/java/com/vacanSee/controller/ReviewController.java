@@ -5,6 +5,7 @@ import com.vacanSee.dto.ReviewDTO;
 import com.vacanSee.repository.PropertyReviewRepository;
 import com.vacanSee.repository.PropertyRepository;
 import com.vacanSee.repository.UserRepository;
+import com.vacanSee.repository.BookingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ public class ReviewController {
     @Autowired private PropertyReviewRepository reviewRepository;
     @Autowired private PropertyRepository propertyRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private BookingRepository bookingRepository;
 
     // GET /api/reviews/property/{propertyId}
     @GetMapping("/property/{propertyId}")
@@ -48,6 +50,16 @@ public class ReviewController {
 
         if (rating < 1 || rating > 5) {
             return ResponseEntity.badRequest().body(Map.of("message", "Rating must be between 1 and 5"));
+        }
+
+        // Verify that the user has a confirmed booking for this property
+        boolean hasConfirmedBooking = bookingRepository
+                .findByUserIdAndPropertyId(userId, propertyId)
+                .stream()
+                .anyMatch(b -> "confirmed".equals(b.getStatus()));
+        if (!hasConfirmedBooking) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "You can only review properties you have a confirmed booking for."));
         }
 
         PropertyReview review = new PropertyReview();
