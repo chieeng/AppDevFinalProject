@@ -6,36 +6,33 @@ import listing1 from "../images/listing-1.jpg";
 import listing2 from "../images/listing-2.jpg";
 import listing3 from "../images/listing-3.png";
 
-// Step states for the booking form:
-//   "form"     — user fills in date and months
-//   "message"  — booking done, optionally add a message to the owner
-//   "done"     — message sent (or skipped), redirecting
 const STEP_FORM    = "form";
 const STEP_MESSAGE = "message";
 const STEP_DONE    = "done";
 
 function ListingDetails({ isLoggedIn }) {
-  const { id }     = useParams();
-  const navigate   = useNavigate();
+  const { id }   = useParams();
+  const navigate = useNavigate();
 
-  // Booking form state
   const [months, setMonths]               = useState(1);
   const [checkIn, setCheckIn]             = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError]   = useState("");
+  const [step, setStep]                   = useState(STEP_FORM);
 
-  // Step state controls which view the right-side panel shows
-  const [step, setStep] = useState(STEP_FORM);
-
-  // Message state (shown after booking is confirmed)
   const [messageText, setMessageText]       = useState("");
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError]     = useState("");
 
-  // Property + save state
+  // Pre-booking inquiry (shown in the form step)
+  const [showInquiry, setShowInquiry]         = useState(false);
+  const [inquiryText, setInquiryText]         = useState("");
+  const [inquiryLoading, setInquiryLoading]   = useState(false);
+  const [inquiryError, setInquiryError]       = useState("");
+  const [inquirySent, setInquirySent]         = useState(false);
+
   const [data, setData]     = useState(null);
   const [isSaved, setIsSaved] = useState(false);
-
 
   const [reviews, setReviews]         = useState([]);
   const [reviewText, setReviewText]   = useState("");
@@ -43,6 +40,8 @@ function ListingDetails({ isLoggedIn }) {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [hasConfirmedBooking, setHasConfirmedBooking] = useState(false);
+
   const currentUserId   = localStorage.getItem("userId");
   const currentUserName = localStorage.getItem("userFullName");
 
@@ -51,22 +50,58 @@ function ListingDetails({ isLoggedIn }) {
       || getAllListings().find((l) => String(l.id) === id);
     setData(listing || null);
     setIsSaved(getSavedIds().includes(parseInt(id)));
-    // Fetch reviews for this property
+
+    // Fetch reviews
     fetch(`http://localhost:8000/api/reviews/property/${id}`)
       .then(r => r.ok ? r.json() : [])
-      .then(data => setReviews(Array.isArray(data) ? data : []))
+      .then(d => setReviews(Array.isArray(d) ? d : []))
       .catch(() => {});
-  }, [id]);
+
+    // Check if logged-in user has a confirmed booking (for review gate)
+    if (isLoggedIn && currentUserId) {
+      fetch(`http://localhost:8000/api/bookings/check?userId=${currentUserId}&propertyId=${id}`)
+        .then(r => r.ok ? r.json() : { hasConfirmedBooking: false })
+        .then(d => setHasConfirmedBooking(d.hasConfirmedBooking === true))
+        .catch(() => {});
+    }
+  }, [id, isLoggedIn, currentUserId]);
 
   const toggleSave_ = () => {
     const updated = toggleSaved(parseInt(id));
     setIsSaved(updated.includes(parseInt(id)));
   };
 
-  // ── STEP 1: User confirms the booking ────────────────────────
+  // Pre-booking inquiry send
+  const handleSendInquiry = async () => {
+    if (!isLoggedIn) { alert("Please log in to send an inquiry."); navigate("/login"); return; }
+    if (!inquiryText.trim()) { setInquiryError("Please write your message."); return; }
+    setInquiryLoading(true);
+    setInquiryError("");
+    try {
+      await addMessage({
+        from:          currentUserId,
+        fromName:      currentUserName || "User",
+        fromEmail:     localStorage.getItem("userEmail") || "",
+        propertyId:    data.id,
+        propertyTitle: data.title,
+        text:          inquiryText.trim(),
+      });
+      setInquirySent(true);
+      setInquiryText("");
+      setTimeout(() => { setInquirySent(false); setShowInquiry(false); }, 2500);
+    } catch (err) {
+      setInquiryError(err.message || "Failed to send inquiry.");
+    } finally {
+      setInquiryLoading(false);
+    }
+  };
 
   const handleSubmitReview = async () => {
     if (!isLoggedIn) { alert("Please log in to leave a review."); return; }
+    if (!hasConfirmedBooking) {
+      setReviewError("You can only review properties you have a confirmed booking for.");
+      return;
+    }
     if (!reviewText.trim()) { setReviewError("Please write a review."); return; }
     setReviewLoading(true);
     setReviewError("");
@@ -115,7 +150,6 @@ function ListingDetails({ isLoggedIn }) {
         months,
         total:         (data.price || 0) * months,
       });
-      // Booking saved — move to the message step
       setStep(STEP_MESSAGE);
     } catch (err) {
       setBookingError(err.message || "Booking failed. Please try again.");
@@ -124,13 +158,10 @@ function ListingDetails({ isLoggedIn }) {
     }
   };
 
-  // ── STEP 2a: User sends a message then we redirect ───────────
   const handleSendMessage = async () => {
     if (!messageText.trim()) return;
-
     setMessageLoading(true);
     setMessageError("");
-
     try {
       await addMessage({
         from:          currentUserId,
@@ -149,13 +180,11 @@ function ListingDetails({ isLoggedIn }) {
     }
   };
 
-  // ── STEP 2b: User skips the message and goes to dashboard ─────
   const handleSkip = () => {
     setStep(STEP_DONE);
     setTimeout(() => navigate("/dashboard"), 1200);
   };
 
-  // ── Loading / not found state ─────────────────────────────────
   if (!data) {
     return (
       <div className="container" style={{ padding: "80px 0", textAlign: "center" }}>
@@ -172,20 +201,19 @@ function ListingDetails({ isLoggedIn }) {
   const total  = (data.price || 0) * months;
 
   const features = [];
-  if (data.hasParking) features.push({ icon: "🅿️", label: "Parking" });
-  if (data.hasGym)     features.push({ icon: "🏋️", label: "Gym Access" });
-  if (data.hasPool)    features.push({ icon: "🏊", label: "Swimming Pool" });
-  if (data.hasGarden)  features.push({ icon: "🌿", label: "Garden" });
-  if (data.hasBalcony) features.push({ icon: "🏡", label: "Balcony" });
-  if (data.hasWifi)    features.push({ icon: "📶", label: "WiFi" });
-  if (data.hasMeals)   features.push({ icon: "🍽️", label: "Meals Included" });
+  if (data.hasParking)  features.push({ icon: "🅿️", label: "Parking" });
+  if (data.hasGym)      features.push({ icon: "🏋️", label: "Gym Access" });
+  if (data.hasPool)     features.push({ icon: "🏊", label: "Swimming Pool" });
+  if (data.hasGarden)   features.push({ icon: "🌿", label: "Garden" });
+  if (data.hasBalcony)  features.push({ icon: "🏡", label: "Balcony" });
+  if (data.hasWifi)     features.push({ icon: "📶", label: "WiFi" });
+  if (data.hasMeals)    features.push({ icon: "🍽️", label: "Meals Included" });
   if (data.petFriendly) features.push({ icon: "🐾", label: "Pet Friendly" });
-  if (data.areaSqft)   features.push({ icon: "📐", label: `${data.areaSqft} sqft` });
+  if (data.areaSqft)    features.push({ icon: "📐", label: `${data.areaSqft} sqft` });
 
   return (
     <div className="listing-page">
 
-      {/* HERO IMAGE */}
       <div className="listing-hero" style={{ backgroundImage: `url(${hero})` }}>
         <div className="listing-hero-overlay" />
         <div className="listing-hero-actions">
@@ -231,9 +259,7 @@ function ListingDetails({ isLoggedIn }) {
               <h3>Amenities</h3>
               <div className="features-grid">
                 {features.map((f, i) => (
-                  <div key={i} className="feature-item">
-                    <span>{f.icon}</span> {f.label}
-                  </div>
+                  <div key={i} className="feature-item"><span>{f.icon}</span> {f.label}</div>
                 ))}
               </div>
             </div>
@@ -250,12 +276,10 @@ function ListingDetails({ isLoggedIn }) {
             </div>
           </div>
 
-
           {/* REVIEWS SECTION */}
           <div className="section">
             <h3>⭐ Reviews & Ratings</h3>
 
-            {/* Average rating */}
             {reviews.length > 0 && (
               <div className="reviews-avg">
                 <span className="reviews-avg-score">
@@ -269,7 +293,6 @@ function ListingDetails({ isLoggedIn }) {
               </div>
             )}
 
-            {/* Existing reviews */}
             <div className="reviews-list">
               {reviews.length === 0 ? (
                 <p style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>No reviews yet. Be the first to review!</p>
@@ -290,44 +313,52 @@ function ListingDetails({ isLoggedIn }) {
               )}
             </div>
 
-            {/* Write a review */}
+            {/* Write a review — only for users with confirmed bookings */}
             {isLoggedIn && (
               <div className="review-form">
                 <h4>Write a Review</h4>
-                <div className="review-rating-pick">
-                  <span>Rating:</span>
-                  {[1,2,3,4,5].map((star) => (
+                {hasConfirmedBooking ? (
+                  <>
+                    <div className="review-rating-pick">
+                      <span>Rating:</span>
+                      {[1,2,3,4,5].map((star) => (
+                        <button
+                          key={star}
+                          className={`star-btn ${star <= reviewRating ? "active" : ""}`}
+                          onClick={() => setReviewRating(star)}
+                        >★</button>
+                      ))}
+                    </div>
+                    <textarea
+                      placeholder="Share your experience with this property..."
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      rows={3}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid var(--color-border)", fontSize: "14px", fontFamily: "inherit", resize: "vertical", background: "var(--color-light-bg)", color: "var(--color-text-primary)", boxSizing: "border-box" }}
+                    />
+                    {reviewError   && <div className="error-message">{reviewError}</div>}
+                    {reviewSuccess && <div className="booking-success" style={{ padding: "10px", marginTop: "8px" }}>✅ Review submitted!</div>}
                     <button
-                      key={star}
-                      className={`star-btn ${star <= reviewRating ? "active" : ""}`}
-                      onClick={() => setReviewRating(star)}
-                    >★</button>
-                  ))}
-                </div>
-                <textarea
-                  placeholder="Share your experience with this property..."
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  rows={3}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid var(--color-border)", fontSize: "14px", fontFamily: "inherit", resize: "vertical", background: "var(--color-light-bg)", color: "var(--color-text-primary)", boxSizing: "border-box" }}
-                />
-                {reviewError   && <div className="error-message">{reviewError}</div>}
-                {reviewSuccess && <div className="booking-success" style={{ padding: "10px", marginTop: "8px" }}>✅ Review submitted!</div>}
-                <button
-                  className="btn-continue"
-                  onClick={handleSubmitReview}
-                  disabled={reviewLoading || !reviewText.trim()}
-                  style={{ marginTop: "10px" }}
-                >
-                  {reviewLoading ? "Submitting..." : "Submit Review"}
-                </button>
+                      className="btn-continue"
+                      onClick={handleSubmitReview}
+                      disabled={reviewLoading || !reviewText.trim()}
+                      style={{ marginTop: "10px" }}
+                    >
+                      {reviewLoading ? "Submitting..." : "Submit Review"}
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ background: "#fef9c3", border: "1px solid #fde68a", borderRadius: "10px", padding: "14px", fontSize: "14px", color: "#92400e" }}>
+                    🔒 You can only review properties you have a <strong>confirmed booking</strong> for.
+                  </div>
+                )}
               </div>
             )}
           </div>
 
         </div>
 
-        {/* RIGHT — booking panel (sticky) */}
+        {/* RIGHT — booking + inquiry panel */}
         <div className="listing-right">
           <div className="booking-form">
 
@@ -374,22 +405,69 @@ function ListingDetails({ isLoggedIn }) {
                 >
                   {bookingLoading ? "Submitting..." : "📅 Confirm Booking"}
                 </button>
+
+                {/* ── PRE-BOOKING INQUIRY ────────────────────── */}
+                <div style={{ marginTop: "20px", borderTop: "1px solid var(--color-border)", paddingTop: "16px" }}>
+                  {!showInquiry ? (
+                    <button
+                      className="btn-skip"
+                      onClick={() => {
+                        if (!isLoggedIn) { navigate("/login"); return; }
+                        setShowInquiry(true);
+                      }}
+                      style={{ width: "100%" }}
+                    >
+                      💬 Ask the Owner a Question
+                    </button>
+                  ) : (
+                    <>
+                      <h4 style={{ marginBottom: "8px", fontSize: "14px" }}>Send an Inquiry</h4>
+                      <p style={{ fontSize: "13px", color: "var(--color-text-muted)", marginBottom: "10px" }}>
+                        Have questions before booking? Send a message to the owner.
+                      </p>
+                      <textarea
+                        rows={3}
+                        placeholder="Hi! I'd like to ask about..."
+                        value={inquiryText}
+                        onChange={(e) => setInquiryText(e.target.value)}
+                        disabled={inquiryLoading}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid var(--color-border)", fontSize: "13px", fontFamily: "inherit", resize: "vertical", background: "var(--color-light-bg)", color: "var(--color-text-primary)", boxSizing: "border-box" }}
+                      />
+                      {inquiryError && <div className="error-message" style={{ marginTop: "6px" }}>{inquiryError}</div>}
+                      {inquirySent  && <div className="booking-success" style={{ padding: "8px 12px", marginTop: "6px" }}>✅ Inquiry sent!</div>}
+                      <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                        <button
+                          className="btn-continue"
+                          onClick={handleSendInquiry}
+                          disabled={inquiryLoading || !inquiryText.trim()}
+                          style={{ flex: 1 }}
+                        >
+                          {inquiryLoading ? "Sending..." : "Send"}
+                        </button>
+                        <button
+                          className="btn-skip"
+                          onClick={() => { setShowInquiry(false); setInquiryText(""); setInquiryError(""); }}
+                          disabled={inquiryLoading}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </>
             )}
 
             {/* ── STEP: message (after booking) ─────────────── */}
             {step === STEP_MESSAGE && (
               <>
-                {/* Success banner */}
                 <div className="booking-success" style={{ marginBottom: "20px" }}>
                   ✅ Booking submitted successfully!
                 </div>
-
                 <h3 style={{ marginBottom: "6px" }}>Message the Owner</h3>
                 <p style={{ fontSize: "14px", color: "var(--color-text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
                   Want to introduce yourself or ask a question? Add a message to your booking request. You can also skip this.
                 </p>
-
                 <textarea
                   className="booking-message-textarea"
                   rows={4}
@@ -398,26 +476,14 @@ function ListingDetails({ isLoggedIn }) {
                   onChange={(e) => setMessageText(e.target.value)}
                   disabled={messageLoading}
                 />
-
                 {messageError && (
-                  <div className="error-message" style={{ marginTop: "8px" }}>
-                    ❌ {messageError}
-                  </div>
+                  <div className="error-message" style={{ marginTop: "8px" }}>❌ {messageError}</div>
                 )}
-
                 <div className="booking-message-actions">
-                  <button
-                    className="btn-continue"
-                    onClick={handleSendMessage}
-                    disabled={messageLoading || !messageText.trim()}
-                  >
+                  <button className="btn-continue" onClick={handleSendMessage} disabled={messageLoading || !messageText.trim()}>
                     {messageLoading ? "Sending..." : "💬 Send Message"}
                   </button>
-                  <button
-                    className="btn-skip"
-                    onClick={handleSkip}
-                    disabled={messageLoading}
-                  >
+                  <button className="btn-skip" onClick={handleSkip} disabled={messageLoading}>
                     Skip → Go to Dashboard
                   </button>
                 </div>
@@ -437,7 +503,6 @@ function ListingDetails({ isLoggedIn }) {
 
           </div>
 
-          {/* Safety note — only shown on the form step */}
           {step === STEP_FORM && (
             <div className="safety-note">
               <strong>🔒 Safe Booking</strong>

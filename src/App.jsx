@@ -32,7 +32,8 @@ function App() {
     // Restore login state
     if (localStorage.getItem("isLoggedIn") === "true") {
       setIsLoggedIn(true);
-      setIsAdmin(localStorage.getItem("userRole") === "admin");
+      const role = localStorage.getItem("userRole");
+      setIsAdmin(role === "admin" || role === "landlord");
     }
 
     // Load real property IDs from backend into localStorage cache.
@@ -42,7 +43,8 @@ function App() {
 
   const handleSetLoggedIn = (val) => {
     setIsLoggedIn(val);
-    setIsAdmin(val && localStorage.getItem("userRole") === "admin");
+    const role = localStorage.getItem("userRole");
+    setIsAdmin(val && (role === "admin" || role === "landlord"));
   };
 
   return (

@@ -270,6 +270,16 @@ export async function updateBookingStatus(id, status) {
   lsSet("vs_bookings", bookings.map((b) => (b.id === id ? { ...b, status } : b)));
 }
 
+export async function cancelBooking(id) {
+  const res = await fetch(`${API}/bookings/${id}/cancel`, { method: "PATCH" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || "Failed to cancel booking");
+  // Update local cache
+  const bookings = lsGet("vs_bookings");
+  lsSet("vs_bookings", bookings.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)));
+  return data;
+}
+
 // ============================================================
 // ADMIN-MANAGED LISTINGS
 // Backend: POST /api/properties  — requires ownerId (=admin's DB id)
