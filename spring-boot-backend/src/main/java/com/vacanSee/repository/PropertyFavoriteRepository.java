@@ -9,5 +9,6 @@ import java.util.Optional;
 @Repository
 public interface PropertyFavoriteRepository extends JpaRepository<PropertyFavorite, Long> {
     List<PropertyFavorite> findByUserId(Long userId);
+    List<PropertyFavorite> findByPropertyId(Long propertyId);
     Optional<PropertyFavorite> findByUserIdAndPropertyId(Long userId, Long propertyId);
 }

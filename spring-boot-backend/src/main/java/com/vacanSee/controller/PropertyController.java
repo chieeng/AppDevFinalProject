@@ -2,7 +2,12 @@ package com.vacanSee.controller;
 
 import com.vacanSee.model.Property;
 import com.vacanSee.dto.PropertyDTO;
+import com.vacanSee.repository.BookingRepository;
+import com.vacanSee.repository.InquiryRepository;
+import com.vacanSee.repository.PropertyFavoriteRepository;
+import com.vacanSee.repository.PropertyImageRepository;
 import com.vacanSee.repository.PropertyRepository;
+import com.vacanSee.repository.PropertyReviewRepository;
 import com.vacanSee.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +27,11 @@ public class PropertyController {
 
     @Autowired private PropertyRepository propertyRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private BookingRepository bookingRepository;
+    @Autowired private InquiryRepository inquiryRepository;
+    @Autowired private PropertyFavoriteRepository favoriteRepository;
+    @Autowired private PropertyReviewRepository reviewRepository;
+    @Autowired private PropertyImageRepository imageRepository;
 
     // GET /api/properties?page=0&size=100
     @GetMapping
@@ -125,12 +135,19 @@ public class PropertyController {
     }
 
     // DELETE /api/properties/{id}
+    // Must delete all dependent records first to avoid FK constraint violations.
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteProperty(@PathVariable Long id) {
         if (!propertyRepository.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Property not found"));
         }
+        // Delete dependents in FK-safe order
+        imageRepository.deleteAll(imageRepository.findByPropertyId(id));
+        favoriteRepository.deleteAll(favoriteRepository.findByPropertyId(id));
+        inquiryRepository.deleteAll(inquiryRepository.findByPropertyId(id));
+        bookingRepository.deleteAll(bookingRepository.findByPropertyId(id));
+        reviewRepository.deleteAll(reviewRepository.findByPropertyId(id));
         propertyRepository.deleteById(id);
         return ResponseEntity.ok(Map.of("message", "Property deleted successfully"));
     }
