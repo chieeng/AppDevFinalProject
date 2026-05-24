@@ -5,6 +5,8 @@ import { getAllListings, loadPropertiesFromBackend } from "../data/appData";
 import cover3 from "../images/cover-3.png";
 
 function Search() {
+  const isAdmin = localStorage.getItem("userRole") === "ADMIN";
+
   const [searchParams] = useSearchParams();
   const [allProperties, setAllProperties] = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -23,9 +25,14 @@ function Search() {
     fetch_();
   }, []);
 
-  const propertyTypes = [...new Set(allProperties.map((p) => p.propertyType).filter(Boolean))];
+  const propertyTypes = ["Boarding House", "Bed Space", "Dormitory"];
 
-  let filtered = allProperties.filter((p) => {
+  // Admin sees all listings; public sees only approved
+  const visibleProperties = isAdmin
+    ? allProperties
+    : allProperties.filter((p) => (p.approvalStatus || "approved") === "approved");
+
+  let filtered = visibleProperties.filter((p) => {
     const q = searchTerm.toLowerCase();
     return p.title.toLowerCase().includes(q) || (p.city || p.location || "").toLowerCase().includes(q);
   });
@@ -72,12 +79,16 @@ function Search() {
 
       <div className="search-results">
         {loading ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-text-muted)" }}>Loading...</div>
+          <div className="browse-loading">
+            <div className="browse-spinner" />
+            <p>Loading properties…</p>
+          </div>
         ) : (
           <>
             <h2>
               {sorted.length} {sorted.length === 1 ? "property" : "properties"} found
               {searchTerm && <span style={{ fontWeight: 400, fontSize: "15px", marginLeft: "8px", color: "#64748b" }}>for "{searchTerm}"</span>}
+              {isAdmin && <span style={{ fontWeight: 500, fontSize: "13px", marginLeft: "10px", color: "#d97706", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "999px", padding: "2px 10px" }}>Admin view — all statuses</span>}
             </h2>
             {sorted.length === 0 ? (
               <div className="no-results-box">
@@ -91,7 +102,8 @@ function Search() {
                     location={p.city || p.location} price={p.price}
                     bedrooms={p.bedrooms} bathrooms={p.bathrooms}
                     propertyType={p.propertyType} status={p.status}
-                    featuredImage={p.featuredImage} />
+                    featuredImage={p.featuredImage}
+                    approvalStatus={isAdmin ? p.approvalStatus : undefined} />
                 ))}
               </div>
             )}

@@ -37,6 +37,7 @@ public class PropertyDTO {
     private Boolean hasMeals;
     private Boolean petFriendly;
     private String featuredImage;
+    private String approvalStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import logo from "../images/logo.png";
 
-function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin }) {
+function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin, isOwner }) {
   const location = useLocation();
   const navigate  = useNavigate();
   const isActive  = (p) => location.pathname === p ? "active" : "";
@@ -37,7 +37,7 @@ function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin }) {
     navigate("/");
   };
 
-  // Admin navbar — simple, no extra icons
+  // Admin navbar
   if (isAdmin) {
     return (
       <nav className="navbar navbar-admin">
@@ -52,6 +52,54 @@ function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin }) {
               {dark ? "☀️" : "🌙"}
             </button>
             <button className="nav-login-btn" onClick={handleLogout}>Logout</button>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // Owner navbar — focused on their dashboard
+  if (isOwner) {
+    return (
+      <nav className="navbar navbar-owner">
+        <div className="container navbar-inner">
+          <Link to="/owner-dashboard" className="logo">
+            <img src={logo} alt="VacanSee" className="logo-img" />
+            <span>VacanSee</span>
+            <span className="owner-badge">OWNER</span>
+          </Link>
+          <ul className="nav-links">
+            <li><Link to="/"       className={isActive("/")}>Home</Link></li>
+            <li><Link to="/browse" className={isActive("/browse")}>Browse</Link></li>
+          </ul>
+          <div className="auth-buttons">
+            <button className="theme-toggle" onClick={() => setDark(!dark)} title="Toggle theme">
+              {dark ? "☀️" : "🌙"}
+            </button>
+            <Link to="/owner-dashboard" className="nav-cta-btn">My Dashboard</Link>
+            <div className="nav-profile-menu">
+              <button
+                className="nav-profile-btn"
+                onClick={(e) => { e.stopPropagation(); setDropdown(!dropdownOpen); }}
+              >
+                <span className="nav-profile-avatar">{initials}</span>
+                <span className="nav-profile-name">{userName.split(" ")[0]}</span>
+                <span className="nav-profile-chevron">{dropdownOpen ? "▲" : "▾"}</span>
+              </button>
+              {dropdownOpen && (
+                <div className="nav-dropdown">
+                  <div className="nav-dropdown-header">
+                    <span className="ndh-name">{userName}</span>
+                    <span className="ndh-email">{localStorage.getItem("userEmail")}</span>
+                  </div>
+                  <hr />
+                  <Link to="/owner-dashboard" onClick={() => setDropdown(false)}>🏠 My Dashboard</Link>
+                  <Link to="/profile"         onClick={() => setDropdown(false)}>👤 My Profile</Link>
+                  <hr />
+                  <button onClick={handleLogout}>🚪 Logout</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -84,7 +132,7 @@ function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin }) {
 
           {isLoggedIn ? (
             <>
-              {/* Dashboard shortcut */}
+              {/* Dashboard shortcut for tenants */}
               <Link to="/dashboard" className="nav-cta-btn">Dashboard</Link>
 
               {/* Profile button — shows initials + name, click opens dropdown */}
@@ -107,6 +155,7 @@ function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin }) {
                     <hr />
                     <Link to="/profile"   onClick={() => setDropdown(false)}>👤 My Profile</Link>
                     <Link to="/dashboard" onClick={() => setDropdown(false)}>📊 Dashboard</Link>
+                    <Link to="/messages"  onClick={() => setDropdown(false)}>💬 My Messages</Link>
                     <Link to="/saved"     onClick={() => setDropdown(false)}>❤️ Saved Listings</Link>
                     <hr />
                     <button onClick={handleLogout}>🚪 Logout</button>

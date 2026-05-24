@@ -10,7 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -71,27 +70,63 @@ public class BookingController {
         booking.setUser(user.get());
         booking.setStatus(booking.getStatus() != null ? booking.getStatus() : "pending");
 
+        // ── Conflict check: a tenant with an approved (confirmed) booking cannot
+        //    book another property whose dates overlap with their active stay.
+        if (booking.getCheckInDate() != null && booking.getCheckOutDate() != null) {
+            List<Booking> confirmed = bookingRepository.findByUserId(booking.getUser().getId())
+                    .stream()
+                    .filter(b -> "confirmed".equals(b.getStatus()))
+                    .collect(Collectors.toList());
+
+            for (Booking existing : confirmed) {
+                if (existing.getCheckInDate() == null || existing.getCheckOutDate() == null) continue;
+                // Standard interval overlap: newStart < existEnd && newEnd > existStart
+                boolean overlaps = booking.getCheckInDate().isBefore(existing.getCheckOutDate())
+                        && booking.getCheckOutDate().isAfter(existing.getCheckInDate());
+                if (overlaps) {
+                    String msg = "You already have a confirmed stay at \""
+                            + existing.getProperty().getTitle() + "\" ("
+                            + existing.getCheckInDate() + " – " + existing.getCheckOutDate()
+                            + "). You cannot book another property while an approved stay is ongoing.";
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", msg));
+                }
+            }
+        }
+
         Booking saved = bookingRepository.save(booking);
         return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(saved));
     }
 
-    // ── PATCH status only — admin approve / reject ────
-    // Body: { "status": "confirmed" }
+    // ── PATCH status only — admin approve/reject, owner approve/reject their own ──
+    // Body: { "status": "confirmed", "requesterId": 5 }
+    // If requesterId is provided, validates the booking belongs to that owner's property.
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateBookingStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, Object> body) {
 
         var opt = bookingRepository.findById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Booking not found"));
         }
-        String status = body.get("status");
+        String status = (String) body.get("status");
         if (status == null || status.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "status field is required"));
         }
         Booking b = opt.get();
+
+        // Ownership check: if requesterId is supplied, ensure this is their property
+        Object requesterIdRaw = body.get("requesterId");
+        if (requesterIdRaw != null) {
+            Long requesterId = Long.valueOf(requesterIdRaw.toString());
+            Long propertyOwnerId = b.getProperty().getOwner().getId();
+            if (!propertyOwnerId.equals(requesterId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "You do not own this property"));
+            }
+        }
+
         b.setStatus(status);
         return ResponseEntity.ok(toDTO(bookingRepository.save(b)));
     }
@@ -152,13 +187,11 @@ public class BookingController {
         return ResponseEntity.ok(dtos);
     }
 
-    // ── GET by owner (admin — sees all bookings for their properties) ──
+    // ── GET by owner — all bookings across all properties owned by this user ──
     @GetMapping("/owner/{ownerId}")
     public ResponseEntity<?> getBookingsByOwner(@PathVariable Long ownerId) {
-        List<Booking> bookings = new ArrayList<>();
-        propertyRepository.findByOwnerId(ownerId)
-                .forEach(p -> bookings.addAll(bookingRepository.findByPropertyId(p.getId())));
-        List<BookingDTO> dtos = bookings.stream().map(this::toDTO).collect(Collectors.toList());
+        List<BookingDTO> dtos = bookingRepository.findByProperty_OwnerId(ownerId)
+                .stream().map(this::toDTO).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 

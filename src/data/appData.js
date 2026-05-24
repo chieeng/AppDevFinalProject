@@ -8,10 +8,11 @@ const LS_KEY   = "vs_properties";
 // Normalize backend fields (BigDecimal price → Number, etc.)
 const normalize = (p) => ({
   ...p,
-  price:     Number(p.price)     || 0,
-  areaSqft:  Number(p.areaSqft)  || null,
-  bedrooms:  Number(p.bedrooms)  || null,
-  bathrooms: Number(p.bathrooms) || null,
+  price:          Number(p.price)     || 0,
+  areaSqft:       Number(p.areaSqft)  || null,
+  bedrooms:       Number(p.bedrooms)  || null,
+  bathrooms:      Number(p.bathrooms) || null,
+  approvalStatus: p.approvalStatus || "approved",
 });
 
 // ── Fetch from backend and update the cache ──────────────────
@@ -67,9 +68,9 @@ const MOCK_LISTINGS = [
     hasWifi: true, hasMeals: false, petFriendly: false, createdAt: "2024-01-20T09:00:00",
   },
   {
-    id: 3, title: "Spacious Apartment in BGC",
-    description: "Modern 2-bedroom apartment in BGC. Gym access, parking included, pet-friendly.",
-    price: 8500, propertyType: "Apartment", status: "available",
+    id: 3, title: "Boarding House in BGC Taguig",
+    description: "Well-maintained boarding house in BGC. Gym access, parking included, and pet-friendly. Perfect for professionals working in the area.",
+    price: 8500, propertyType: "Boarding House", status: "available",
     location: "30th Street", city: "Taguig", state: "Metro Manila", country: "Philippines",
     bedrooms: 2, bathrooms: 2,
     hasParking: true, hasGym: true, hasPool: true, hasGarden: false, hasBalcony: true,
@@ -85,18 +86,18 @@ const MOCK_LISTINGS = [
     hasWifi: true, hasMeals: true, petFriendly: false, createdAt: "2024-02-05T08:00:00",
   },
   {
-    id: 5, title: "Studio near IT Park Cebu",
-    description: "Fully furnished studio near Cebu IT Park. Ideal for BPO workers. WiFi, with balcony.",
-    price: 5500, propertyType: "Studio", status: "available",
+    id: 5, title: "Bed Space near IT Park Cebu",
+    description: "Affordable bed space near Cebu IT Park. Ideal for BPO workers and students. Free WiFi, with balcony access.",
+    price: 5500, propertyType: "Bed Space", status: "available",
     location: "Cebu IT Park", city: "Cebu City", state: "Cebu", country: "Philippines",
     bedrooms: 1, bathrooms: 1,
     hasParking: true, hasGym: true, hasPool: false, hasGarden: false, hasBalcony: true,
     hasWifi: true, hasMeals: false, petFriendly: false, createdAt: "2024-02-10T10:00:00",
   },
   {
-    id: 6, title: "House with Garden in Davao",
-    description: "Pet-friendly house with garden. 3 bedrooms, near Ateneo de Davao.",
-    price: 6000, propertyType: "House for Rent", status: "available",
+    id: 6, title: "Boarding House with Garden in Davao",
+    description: "Pet-friendly boarding house with garden in a quiet subdivision. 3 rooms available, near Ateneo de Davao.",
+    price: 6000, propertyType: "Boarding House", status: "available",
     location: "Matina District", city: "Davao City", state: "Davao del Sur", country: "Philippines",
     bedrooms: 3, bathrooms: 2,
     hasParking: true, hasGym: false, hasPool: false, hasGarden: true, hasBalcony: false,
@@ -104,10 +105,3 @@ const MOCK_LISTINGS = [
   },
 ];
 
-// Unused legacy exports kept for compatibility
-export const initializeData       = () => {};
-export const getBookingsByUserId  = () => [];
-export const getAllBookings        = () => [];
-export const getConversationsByUserId = () => [];
-export const addUser              = () => {};
-export const getUserByEmail       = () => null;

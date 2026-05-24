@@ -33,10 +33,17 @@ public class DataInitializationConfig {
                 a.setFullName("VacanSee Admin");
                 a.setPhone("+63 900 000 0000");
                 a.setBio("Official VacanSee administrator account");
+                a.setRole("ADMIN");
                 admin = userRepository.save(a);
                 System.out.println("✅ Admin created (ID=" + admin.getId() + ")");
             } else {
                 admin = userRepository.findByEmail(adminEmail).orElseThrow();
+                // Ensure existing admin row gets ADMIN role (migration for existing DBs)
+                if (!"ADMIN".equals(admin.getRole())) {
+                    admin.setRole("ADMIN");
+                    userRepository.save(admin);
+                    System.out.println("✅ Admin role migrated to ADMIN");
+                }
                 System.out.println("✅ Admin exists (ID=" + admin.getId() + ")");
             }
 
@@ -58,9 +65,9 @@ public class DataInitializationConfig {
                     1, 1, false, false, false, false, false, true, false, false);
 
                 seedProperty(propertyRepository, admin,
-                    "Spacious Apartment in BGC",
-                    "Modern 2-bedroom apartment in the heart of BGC. Gym access, parking included, and pet-friendly.",
-                    8500, "Apartment", "30th Street", "Taguig", "Metro Manila",
+                    "Boarding House in BGC Taguig",
+                    "Well-maintained boarding house in BGC. Gym access, parking included, and pet-friendly. Perfect for professionals working in the area.",
+                    8500, "Boarding House", "30th Street", "Taguig", "Metro Manila",
                     2, 2, true, true, true, false, true, true, false, true);
 
                 seedProperty(propertyRepository, admin,
@@ -70,15 +77,15 @@ public class DataInitializationConfig {
                     1, 2, false, false, false, true, false, true, true, false);
 
                 seedProperty(propertyRepository, admin,
-                    "Studio near IT Park Cebu",
-                    "Fully furnished studio unit near Cebu IT Park. Ideal for BPO workers. Free WiFi, with balcony.",
-                    5500, "Studio", "Cebu IT Park", "Cebu City", "Cebu",
+                    "Bed Space near IT Park Cebu",
+                    "Affordable bed space near Cebu IT Park. Ideal for BPO workers and students. Free WiFi, with balcony access.",
+                    5500, "Bed Space", "Cebu IT Park", "Cebu City", "Cebu",
                     1, 1, true, true, false, false, true, true, false, false);
 
                 seedProperty(propertyRepository, admin,
-                    "House with Garden in Davao",
-                    "Pet-friendly house with garden in a quiet subdivision. 3 bedrooms, near Ateneo de Davao.",
-                    6000, "House for Rent", "Matina District", "Davao City", "Davao del Sur",
+                    "Boarding House with Garden in Davao",
+                    "Pet-friendly boarding house with garden in a quiet subdivision. 3 rooms available, near Ateneo de Davao.",
+                    6000, "Boarding House", "Matina District", "Davao City", "Davao del Sur",
                     3, 2, true, false, false, true, false, false, false, true);
 
                 System.out.println("✅ Sample properties seeded!");

@@ -136,4 +136,10 @@ public class InquiryController {
     public ResponseEntity<?> getByStatus(@PathVariable String status) {
         return ResponseEntity.ok(inquiryRepository.findByStatus(status));
     }
+
+    // GET /api/inquiries/owner/{ownerId} — all inquiries for properties owned by this user
+    @GetMapping("/owner/{ownerId}")
+    public ResponseEntity<?> getByOwner(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(inquiryRepository.findByProperty_OwnerId(ownerId));
+    }
 }

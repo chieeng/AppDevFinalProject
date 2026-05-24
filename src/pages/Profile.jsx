@@ -1,30 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getBookingsByUser } from "../data/adminData";
 
-// Profile page - shows user info from localStorage + their booking stats
 function Profile() {
   const [fullName, setFullName] = useState(localStorage.getItem("userFullName") || "");
   const [email] = useState(localStorage.getItem("userEmail") || "");
-  const [emailNotif, setEmailNotif] = useState(true);
-  const [smsNotif, setSmsNotif] = useState(false);
-  const [newsletter, setNewsletter] = useState(true);
+  const [emailNotif, setEmailNotif] = useState(() => localStorage.getItem("pref_emailNotif") !== "false");
+  const [smsNotif, setSmsNotif]     = useState(() => localStorage.getItem("pref_smsNotif") === "true");
+  const [newsletter, setNewsletter] = useState(() => localStorage.getItem("pref_newsletter") !== "false");
   const [saved, setSaved] = useState(false);
+  const [bookings, setBookings] = useState([]);
 
   const userId = localStorage.getItem("userId") || "N/A";
-  const bookings = getBookingsByUser(userId);
   const savedCount = JSON.parse(localStorage.getItem("savedListings") || "[]").length;
 
+  useEffect(() => {
+    if (userId && userId !== "N/A") {
+      getBookingsByUser(userId).then(setBookings).catch(() => {
+        const cached = JSON.parse(localStorage.getItem("vs_bookings") || "[]");
+        setBookings(cached.filter((b) => String(b.userId) === String(userId)));
+      });
+    }
+  }, [userId]);
+
   const handleSave = () => {
-    localStorage.setItem("userFullName", fullName);
+    localStorage.setItem("userFullName",    fullName);
+    localStorage.setItem("pref_emailNotif", String(emailNotif));
+    localStorage.setItem("pref_smsNotif",   String(smsNotif));
+    localStorage.setItem("pref_newsletter", String(newsletter));
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
     <div className="profile-page">
 
-      {/* TOP BANNER */}
       <div className="profile-banner">
         <div className="container profile-banner-inner">
           <div className="profile-avatar-big">
@@ -34,19 +44,18 @@ function Profile() {
             <h1>{fullName || "My Profile"}</h1>
             <p>{email}</p>
             <div className="profile-quick-stats">
-              <span>📋 {bookings.length} bookings</span>
+              <span>📋 {bookings.length} booking{bookings.length !== 1 ? "s" : ""}</span>
+              <span>⏳ {bookings.filter((b) => b.status === "pending").length} pending</span>
+              <span>✅ {bookings.filter((b) => b.status === "confirmed").length} confirmed</span>
               <span>❤️ {savedCount} saved</span>
-              <span>🆔 #{userId.slice(0, 8)}</span>
             </div>
           </div>
         </div>
       </div>
 
       <div className="container profile-body">
-
         <div className="profile-grid">
 
-          {/* Personal Information */}
           <div className="profile-card">
             <h2>Personal Information</h2>
 
@@ -81,7 +90,6 @@ function Profile() {
             <button className="save-btn" onClick={handleSave}>Save Changes</button>
           </div>
 
-          {/* Notification Settings */}
           <div className="profile-card">
             <h2>Notification Settings</h2>
 
@@ -119,7 +127,6 @@ function Profile() {
             </div>
           </div>
 
-          {/* Quick links card */}
           <div className="profile-card profile-links-card">
             <h2>My Activity</h2>
             <Link to="/dashboard" className="profile-link-item">
@@ -138,11 +145,11 @@ function Profile() {
               </div>
               <span className="pli-arrow">→</span>
             </Link>
-            <Link to="/conversations" className="profile-link-item">
+            <Link to="/messages" className="profile-link-item">
               <span>💬</span>
               <div>
                 <strong>My Messages</strong>
-                <p>View sent inquiries</p>
+                <p>View sent inquiries & replies</p>
               </div>
               <span className="pli-arrow">→</span>
             </Link>

@@ -11,6 +11,21 @@
 # production
 /build
 
+# Spring Boot compiled output
+spring-boot-backend/target/
+
+# Python virtual environment
+.venv/
+
+# Archive backups
+*.zip
+
+# Generated files
+erd.html
+
+# Claude Code local settings
+.claude/
+
 # misc
 .DS_Store
 .env.local

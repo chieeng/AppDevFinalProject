@@ -56,9 +56,9 @@ function Footer() {
         <div className="container">
           <p>© {currentYear} VacanSee. All rights reserved.</p>
           <div className="footer-bottom-links">
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
-            <a href="#">Help Center</a>
+            <Link to="/contact" className="footer-link-placeholder">Privacy Policy</Link>
+            <Link to="/contact" className="footer-link-placeholder">Terms of Service</Link>
+            <Link to="/contact" className="footer-link-placeholder">Help Center</Link>
           </div>
         </div>
       </div>

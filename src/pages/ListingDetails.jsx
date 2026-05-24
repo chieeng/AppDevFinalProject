@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { getListingById, getAllListings, loadPropertiesFromBackend } from "../data/appData";
-import { addBooking, addMessage, toggleSaved, getSavedIds } from "../data/adminData";
+import { getListingById, getAllListings } from "../data/appData";
+import { addBooking, addMessage, toggleSaved, getSavedIds, getBookingsByUser } from "../data/adminData";
 import listing1 from "../images/listing-1.jpg";
 import listing2 from "../images/listing-2.jpg";
 import listing3 from "../images/listing-3.png";
@@ -97,11 +97,47 @@ function ListingDetails({ isLoggedIn }) {
 
   const handleBooking = async () => {
     if (!isLoggedIn) { alert("Please log in first!"); navigate("/login"); return; }
-    if (!checkIn)    { alert("Please select a move-in date."); return; }
-    if (months < 1)  { alert("Number of months must be at least 1."); return; }
+    if (!checkIn)    { setBookingError("Please select a move-in date."); return; }
+    if (months < 1)  { setBookingError("Number of months must be at least 1."); return; }
 
     setBookingLoading(true);
     setBookingError("");
+
+    // ── Conflict check: block if the tenant already has a confirmed booking
+    //    whose date range overlaps with the requested dates.
+    try {
+      const allBookings = await getBookingsByUser(currentUserId);
+      const confirmed   = allBookings.filter((b) => b.status === "confirmed");
+
+      const newStart = new Date(checkIn);
+      const newEnd   = new Date(checkIn);
+      newEnd.setDate(newEnd.getDate() + months * 30);
+
+      for (const b of confirmed) {
+        if (!b.checkIn) continue;
+        const existStart = new Date(b.checkIn);
+        // Reconstruct check-out: months × 30 days from check-in
+        const existEnd = new Date(b.checkIn);
+        existEnd.setDate(existEnd.getDate() + (b.months || 1) * 30);
+
+        // Standard interval overlap: A starts before B ends AND A ends after B starts
+        const overlaps = newStart < existEnd && newEnd > existStart;
+        if (overlaps) {
+          const fmt = (d) =>
+            d.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+          setBookingError(
+            `You already have an active confirmed stay at "${b.propertyTitle}" ` +
+            `(${fmt(existStart)} – ${fmt(existEnd)}). ` +
+            `You cannot book another property while an approved stay is ongoing. ` +
+            `Please choose dates after ${fmt(existEnd)}.`
+          );
+          setBookingLoading(false);
+          return;
+        }
+      }
+    } catch {
+      // If we can't fetch bookings (network down), let the server enforce the rule
+    }
 
     try {
       await addBooking({
@@ -115,7 +151,6 @@ function ListingDetails({ isLoggedIn }) {
         months,
         total:         (data.price || 0) * months,
       });
-      // Booking saved — move to the message step
       setStep(STEP_MESSAGE);
     } catch (err) {
       setBookingError(err.message || "Booking failed. Please try again.");
@@ -202,8 +237,11 @@ function ListingDetails({ isLoggedIn }) {
 
           <div className="listing-header">
             <div>
-              <div className={`listing-availability ${(data.status || "available").toLowerCase()}`}>
-                {data.status === "occupied" ? "● Occupied" : "● Available Now"}
+              <div className={`listing-availability ${(data.status || "available").replace(/\s+/g, "-").toLowerCase()}`}>
+                {data.status === "occupied"          ? "● Occupied"
+                  : data.status === "fully booked"   ? "● Fully Booked"
+                  : data.status === "under maintenance" ? "● Under Maintenance"
+                  : "● Available Now"}
               </div>
               <h1 className="title">{data.title}</h1>
               <p className="location">📍 {data.location}, {data.city}</p>

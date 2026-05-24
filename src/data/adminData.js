@@ -59,6 +59,20 @@ export async function getMessages() {
   }
 }
 
+// Fetch inquiries sent by a specific user — used by ChatBox
+export async function getUserMessages(userId) {
+  try {
+    const data = await tryFetch(`${API}/inquiries/user/${userId}`);
+    const normalized = Array.isArray(data) ? data.map(normInquiry) : [];
+    // Merge into the shared cache so getMessagesSync() stays fresh
+    const existing = lsGet("vs_messages").filter((m) => String(m.from) !== String(userId));
+    lsSet("vs_messages", [...existing, ...normalized]);
+    return normalized;
+  } catch {
+    return lsGet("vs_messages").filter((m) => String(m.from) === String(userId));
+  }
+}
+
 export function getMessagesSync() {
   return lsGet("vs_messages");
 }
@@ -235,7 +249,11 @@ export async function addBooking(booking) {
     console.log("Booking saved to DB:", saved);
   } catch (err) {
     console.error("Booking POST failed:", err.message);
-    // Save to localStorage so the user sees it even when backend is down
+    // Re-throw explicit server rejections (4xx) so the UI shows the real error
+    // (e.g. 409 booking conflict, 404 property not found).
+    // For network failures ("Failed to fetch") and 5xx server errors, fall back to localStorage.
+    if (err.message && /^HTTP 4/.test(err.message)) throw err;
+    // HTTP 5xx / network down — save locally as fallback
   }
 
   const norm = fromBackend ? normBooking(saved) : {
@@ -270,6 +288,17 @@ export async function updateBookingStatus(id, status) {
   lsSet("vs_bookings", bookings.map((b) => (b.id === id ? { ...b, status } : b)));
 }
 
+export async function cancelBooking(id) {
+  try {
+    await tryFetch(`${API}/bookings/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "cancelled" }),
+    });
+  } catch {}
+  const bookings = lsGet("vs_bookings");
+  lsSet("vs_bookings", bookings.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)));
+}
+
 // ============================================================
 // ADMIN-MANAGED LISTINGS
 // Backend: POST /api/properties  — requires ownerId (=admin's DB id)
@@ -277,17 +306,26 @@ export async function updateBookingStatus(id, status) {
 
 export async function getAdminListings() {
   try {
-    const res = await fetch(`${API}/properties?page=0&size=200`);
+    const res = await fetch(`${API}/properties?page=0&size=1000`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const list = Array.isArray(data) ? data : (data.content || []);
-    // Normalize price from BigDecimal string to number
-    const normalized = list.map((p) => ({ ...p, price: Number(p.price) || 0 }));
+    const normalized = list.map((p) => ({
+      ...p,
+      price:          Number(p.price) || 0,
+      approvalStatus: p.approvalStatus || "approved",
+    }));
     lsSet("vs_admin_listings", normalized);
     return normalized;
   } catch (err) {
     console.warn("getAdminListings backend error:", err.message);
-    return lsGet("vs_admin_listings");
+    // Merge vs_admin_listings with vs_properties so owner-submitted listings
+    // (which are written to vs_properties by addOwnerListing) are never missed
+    const adminCache = lsGet("vs_admin_listings");
+    const propsCache = lsGet("vs_properties");
+    const adminIds = new Set(adminCache.map((l) => Number(l.id)));
+    const extra = propsCache.filter((l) => l.id && !adminIds.has(Number(l.id)));
+    return [...adminCache, ...extra];
   }
 }
 
@@ -419,6 +457,177 @@ export async function deleteListing(id) {
       localStorage.setItem("vs_properties", JSON.stringify(list));
     }
   } catch {}
+}
+
+// ============================================================
+// OWNER-SCOPED DATA FUNCTIONS
+// These wrap the owner-specific backend endpoints so owners
+// only see their own listings, bookings, and inquiries.
+// ============================================================
+
+export async function getOwnerListings(ownerId) {
+  try {
+    const data = await tryFetch(`${API}/properties/owner/${ownerId}`);
+    const list = Array.isArray(data) ? data : (data.content || []);
+    const normalized = list.map((p) => ({ ...p, price: Number(p.price) || 0 }));
+    lsSet("vs_owner_listings", normalized);
+    return normalized;
+  } catch (err) {
+    console.warn("getOwnerListings error:", err.message);
+    return lsGet("vs_owner_listings").filter((l) => String(l.ownerId) === String(ownerId));
+  }
+}
+
+export async function getOwnerBookings(ownerId) {
+  try {
+    const data = await tryFetch(`${API}/bookings/owner/${ownerId}`);
+    const normalized = Array.isArray(data) ? data.map(normBooking) : [];
+    lsSet("vs_owner_bookings", normalized);
+    return normalized;
+  } catch (err) {
+    console.warn("getOwnerBookings error:", err.message);
+    return lsGet("vs_owner_bookings");
+  }
+}
+
+export async function getOwnerInquiries(ownerId) {
+  try {
+    const data = await tryFetch(`${API}/inquiries/owner/${ownerId}`);
+    const normalized = Array.isArray(data) ? data.map(normInquiry) : [];
+    lsSet("vs_owner_inquiries", normalized);
+    return normalized;
+  } catch (err) {
+    console.warn("getOwnerInquiries error:", err.message);
+    return lsGet("vs_owner_inquiries");
+  }
+}
+
+// Owner adds a listing — same as admin but scoped to their own userId
+export async function addOwnerListing(listing, ownerId) {
+  const payload = {
+    title:          listing.title,
+    description:    listing.description || "",
+    price:          parseFloat(listing.price) || 0,
+    propertyType:   listing.propertyType || "Boarding House",
+    status:         listing.status || "available",
+    approvalStatus: "pending",  // must be approved by admin before going public
+    location:     listing.location || "",
+    city:         listing.city || "",
+    state:        listing.state || "",
+    country:      "Philippines",
+    bedrooms:     parseInt(listing.bedrooms)  || 1,
+    bathrooms:    parseInt(listing.bathrooms) || 1,
+    areaSqft:     listing.areaSqft  ? parseFloat(listing.areaSqft)  : null,
+    yearBuilt:    listing.yearBuilt ? parseInt(listing.yearBuilt)   : null,
+    hasParking:   !!listing.hasParking,
+    hasGym:       !!listing.hasGym,
+    hasPool:      !!listing.hasPool,
+    hasGarden:    !!listing.hasGarden,
+    hasBalcony:   !!listing.hasBalcony,
+    hasWifi:      !!listing.hasWifi,
+    hasMeals:     !!listing.hasMeals,
+    petFriendly:  !!listing.petFriendly,
+    featuredImage: listing.featuredImage || null,
+    ownerId,
+  };
+
+  const res = await fetch(`${API}/properties`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || `Server error ${res.status}`);
+  const normalized = { ...data, price: Number(data.price) || 0 };
+
+  // Keep all three caches in sync so admin can see new listings immediately
+  const ownerCache = lsGet("vs_owner_listings");
+  lsSet("vs_owner_listings", [...ownerCache, normalized]);
+  const propsCache = lsGet("vs_properties");
+  lsSet("vs_properties", [...propsCache, normalized]);
+  const adminCache = lsGet("vs_admin_listings");
+  lsSet("vs_admin_listings", [...adminCache, normalized]);
+  return normalized;
+}
+
+// Owner updates their own listing — passes requesterId for ownership validation
+export async function updateOwnerListing(id, listing, ownerId) {
+  await tryFetch(`${API}/properties/${id}?requesterId=${ownerId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      ...listing,
+      price:     parseFloat(listing.price)    || 0,
+      bedrooms:  parseInt(listing.bedrooms)   || 1,
+      bathrooms: parseInt(listing.bathrooms)  || 1,
+      areaSqft:  listing.areaSqft  ? parseFloat(listing.areaSqft)  : null,
+      yearBuilt: listing.yearBuilt ? parseInt(listing.yearBuilt)   : null,
+    }),
+  });
+
+  const updateCache = (key) => {
+    const c = lsGet(key);
+    lsSet(key, c.map((l) =>
+      Number(l.id) === Number(id) ? { ...l, ...listing, price: Number(listing.price) || 0 } : l
+    ));
+  };
+  updateCache("vs_owner_listings");
+  updateCache("vs_properties");
+}
+
+// Owner deletes their own listing — passes requesterId for ownership validation
+export async function deleteOwnerListing(id, ownerId) {
+  await tryFetch(`${API}/properties/${id}?requesterId=${ownerId}`, { method: "DELETE" });
+
+  const removeFrom = (key) => {
+    const c = lsGet(key);
+    lsSet(key, c.filter((l) => Number(l.id) !== Number(id)));
+  };
+  removeFrom("vs_owner_listings");
+  removeFrom("vs_properties");
+}
+
+// Owner approves/rejects a booking for their own property
+export async function updateOwnerBookingStatus(bookingId, status, ownerId) {
+  await tryFetch(`${API}/bookings/${bookingId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, requesterId: ownerId }),
+  });
+  const bookings = lsGet("vs_owner_bookings");
+  lsSet("vs_owner_bookings", bookings.map((b) => (b.id === bookingId ? { ...b, status } : b)));
+}
+
+// Owner replies to an inquiry about their property
+export async function replyToOwnerMessage(inquiryId, replyText) {
+  await tryFetch(`${API}/inquiries/${inquiryId}/reply`, {
+    method: "PATCH",
+    body: JSON.stringify({ reply: replyText }),
+  });
+  const msgs = lsGet("vs_owner_inquiries");
+  lsSet("vs_owner_inquiries", msgs.map((m) =>
+    m.id === inquiryId
+      ? { ...m, reply: replyText, replyDate: new Date().toISOString(), read: true }
+      : m
+  ));
+}
+
+// Admin approves or rejects an owner-submitted listing
+export async function setListingApproval(id, approvalStatus) {
+  try {
+    await tryFetch(`${API}/properties/${id}/approval`, {
+      method: "PATCH",
+      body: JSON.stringify({ approvalStatus }),
+    });
+  } catch (err) {
+    console.warn("setListingApproval backend error:", err.message);
+    // Still update the local caches below so the UI reflects the action
+  }
+  const update = (key) => {
+    const c = lsGet(key);
+    lsSet(key, c.map((l) => Number(l.id) === Number(id) ? { ...l, approvalStatus } : l));
+  };
+  update("vs_admin_listings");
+  update("vs_properties");
+  update("vs_owner_listings"); // keep owner's cache in sync so they see correct status on refresh
 }
 
 // ============================================================

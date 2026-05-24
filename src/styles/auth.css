@@ -324,3 +324,156 @@
 .other { text-align: center; }
 .terms { text-align: center; }
 .demo-hint { text-align: center; }
+
+/* ================================================
+   REGISTER PAGE — ROLE SELECTOR
+   ================================================ */
+
+/* Slightly wider card to comfortably fit two role cards side by side */
+.auth-card-register {
+  width: 460px;
+}
+
+/* Section heading above the cards */
+.role-selector-heading {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+
+/* Two-column grid for Tenant / Owner cards */
+.role-selector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+/* Base card */
+.role-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px 16px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  background: var(--color-light-bg);
+  transition:
+    border-color var(--transition-base),
+    background   var(--transition-base),
+    box-shadow   var(--transition-base),
+    transform    var(--transition-fast);
+  user-select: none;
+  outline: none;
+}
+
+.role-option:hover:not(.active) {
+  border-color: #cbd5e1;
+  background: var(--color-surface);
+  transform: translateY(-1px);
+}
+
+/* Keyboard focus ring */
+.role-option:focus-visible {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+/* Tenant active — blue accent */
+.role-option[data-role="tenant"].active {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.06);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+
+/* Owner active — teal/green (brand primary) */
+.role-option[data-role="owner"].active {
+  border-color: var(--color-primary);
+  background: rgba(15, 164, 146, 0.07);
+  box-shadow: 0 0 0 3px rgba(15, 164, 146, 0.12);
+}
+
+.role-option-icon {
+  font-size: 28px;
+  line-height: 1;
+  display: block;
+}
+
+.role-option-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.role-option-desc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* ── Owner extra fields (property name + city) ── */
+.owner-extra-fields {
+  background: rgba(15, 164, 146, 0.06);
+  border: 1.5px solid rgba(15, 164, 146, 0.22);
+  border-radius: var(--radius-md);
+  padding: 16px 16px 6px;
+  margin-bottom: 14px;
+  animation: fadeInDown 0.18s ease-out;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.owner-extra-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* Inputs inside the owner-extra-fields box inherit auth-card input styles */
+.owner-extra-fields input {
+  margin-bottom: 10px;
+}
+
+/* ── Owner-variant submit button (teal gradient) ── */
+.btn-continue-owner {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #059669 100%);
+  box-shadow: 0 4px 14px rgba(15, 164, 146, 0.32);
+}
+
+.btn-continue-owner:hover {
+  box-shadow: 0 8px 24px rgba(15, 164, 146, 0.44);
+  opacity: 0.93;
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] .auth-card { background: #1e293b; }
+[data-theme="dark"] .auth-card input { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+[data-theme="dark"] .auth-card input:focus { background: #0f172a; border-color: var(--color-primary); }
+[data-theme="dark"] .role-option { background: #0f172a; border-color: #334155; }
+[data-theme="dark"] .role-option:hover:not(.active) { background: #1e293b; border-color: #475569; }
+[data-theme="dark"] .role-option[data-role="tenant"].active { background: rgba(37,99,235,0.12); }
+[data-theme="dark"] .role-option[data-role="owner"].active  { background: rgba(15,164,146,0.12); }
+[data-theme="dark"] .role-option-label { color: #f1f5f9; }
+[data-theme="dark"] .owner-extra-fields { background: rgba(15,164,146,0.08); border-color: rgba(15,164,146,0.25); }
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+  .auth-card-register { width: 95%; }
+  .role-selector-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .role-option { padding: 14px 8px 12px; }
+  .role-option-icon { font-size: 22px; }
+}
+
+@media (max-width: 360px) {
+  .role-selector-grid { grid-template-columns: 1fr; }
+}

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   getMessages, markMessageRead, replyToMessage,
   getBookings, updateBookingStatus,
-  getAdminListings, addListing, updateListing, deleteListing,
+  getAdminListings, addListing, updateListing, deleteListing, setListingApproval,
 } from "../data/adminData";
 
 // ─────────────────────────────────────────────
@@ -46,7 +46,7 @@ function AdminDashboard() {
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    if (localStorage.getItem("userRole") !== "admin") { navigate("/login"); return; }
+    if (localStorage.getItem("userRole") !== "ADMIN") { navigate("/login"); return; }
     loadAll();
   }, []);
 
@@ -58,16 +58,26 @@ function AdminDashboard() {
       getMessages(),
     ]);
 
-    // Also include any listings that failed to reach the backend (marked _localOnly)
-    // so admin can still see them and retry
-    const localOnly = JSON.parse(localStorage.getItem("vs_admin_listings") || "[]").filter((l) => l._localOnly);
-    const merged = [...localOnly, ...backendListings];
+    // Supplement with any listings from vs_properties that didn't come back from the backend.
+    // addOwnerListing writes to vs_properties on success, so owner-submitted listings
+    // are always present there even if getAdminListings had a cache/sync miss.
+    const propsCache = JSON.parse(localStorage.getItem("vs_properties") || "[]");
+    const seenIds = new Set(backendListings.map((l) => Number(l.id)));
+    const extraFromProps = propsCache.filter((l) => l.id && !seenIds.has(Number(l.id)));
 
+    // Also include admin-only listings that only reached localStorage (marked _localOnly)
+    const adminCache = JSON.parse(localStorage.getItem("vs_admin_listings") || "[]");
+    const localOnly = adminCache.filter((l) => l._localOnly);
+
+    const merged = [...localOnly, ...extraFromProps, ...backendListings];
     setListings(merged);
     setBookings(b);
     setMessages(m);
     setLoading(false);
   };
+
+  // ── Listing filter state ──────────────────────
+  const [listingFilter, setListingFilter] = useState("all"); // "all" | "pending" | "approved" | "rejected"
 
   // ── Listing actions ──────────────────────────
   const openNew  = () => { setForm(BLANK); setEditId(null); setShowForm(true); };
@@ -160,14 +170,22 @@ function AdminDashboard() {
     loadAll();
   };
 
+  // ── Listing approval action ──────────────────
+  const handleApproval = async (id, approvalStatus) => {
+    await setListingApproval(id, approvalStatus);
+    loadAll();
+  };
+
   // ── Derived counts ───────────────────────────
+  const pendingApprovalCount = listings.filter((l) => l.approvalStatus === "pending").length;
   const pendingCount  = bookings.filter((b) => b.status === "pending").length;
   const unreadCount   = messages.filter((m) => !m.read).length;
   const filteredBk    = filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
 
   const statusStyle = (s) => {
-    if (s === "confirmed") return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
-    if (s === "rejected")  return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
+    if (s === "confirmed")  return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
+    if (s === "rejected")   return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
+    if (s === "cancelled")  return { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" };
     return { bg: "#fffbeb", color: "#d97706", border: "#fde68a" };
   };
 
@@ -183,6 +201,9 @@ function AdminDashboard() {
           </div>
           <div className="admin-header-stats">
             <div className="admin-stat-pill"><span>{listings.length}</span> listings</div>
+            {pendingApprovalCount > 0 && (
+              <div className="admin-stat-pill unread"><span>{pendingApprovalCount}</span> pending approval</div>
+            )}
             <div className="admin-stat-pill"><span>{pendingCount}</span> pending bookings</div>
             <div className="admin-stat-pill unread"><span>{unreadCount}</span> unread messages</div>
           </div>
@@ -195,6 +216,7 @@ function AdminDashboard() {
         <div className="admin-tabs">
           <button className={`admin-tab ${tab === "listings" ? "active" : ""}`} onClick={() => setTab("listings")}>
             🏠 Listings <span className="tab-count">{listings.length}</span>
+            {pendingApprovalCount > 0 && <span className="tab-badge">{pendingApprovalCount}</span>}
           </button>
           <button className={`admin-tab ${tab === "bookings" ? "active" : ""}`} onClick={() => setTab("bookings")}>
             📅 Bookings
@@ -218,56 +240,139 @@ function AdminDashboard() {
               <div className="admin-section">
                 <div className="admin-section-header">
                   <h2>Property Listings</h2>
-                  <button className="admin-add-btn" onClick={openNew}>
-                    + Add New Listing
-                  </button>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <button className="admin-refresh-btn" onClick={loadAll} title="Refresh listings">🔄 Refresh</button>
+                    <button className="admin-add-btn" onClick={openNew}>+ Add New Listing</button>
+                  </div>
                 </div>
 
-                {listings.length === 0 ? (
-                  <div className="admin-empty">
-                    <div className="empty-icon">🏠</div>
-                    <h3>No listings yet</h3>
-                    <p>Click "Add New Listing" to create your first property.</p>
-                  </div>
-                ) : (
-                  <div className="admin-listings-grid">
-                    {[...listings].reverse().map((l) => (
-                      <div key={l.id} className="admin-listing-card">
-                        {/* Show uploaded image if available */}
-                        {l.featuredImage && (
-                          <div className="alc-image">
-                            <img src={l.featuredImage} alt={l.title} />
+                {/* ── PENDING APPROVAL BANNER (always shown first when there are pending listings) ── */}
+                {listings.filter((l) => l.approvalStatus === "pending").length > 0 && (
+                  <div className="admin-pending-section">
+                    <div className="admin-pending-header">
+                      <span className="admin-pending-icon">⏳</span>
+                      <div>
+                        <h3>Pending Owner Submissions</h3>
+                        <p>{listings.filter((l) => l.approvalStatus === "pending").length} listing{listings.filter((l) => l.approvalStatus === "pending").length !== 1 ? "s" : ""} waiting for your approval</p>
+                      </div>
+                    </div>
+                    <div className="admin-listings-grid">
+                      {listings.filter((l) => l.approvalStatus === "pending").map((l) => (
+                        <div key={l.id} className="admin-listing-card pending-card">
+                          {l.featuredImage && <div className="alc-image"><img src={l.featuredImage} alt={l.title} /></div>}
+                          <div className="alc-header">
+                            <div className="alc-title">{l.title}</div>
+                            <span className="alc-status pending-approval">⏳ Pending Review</span>
                           </div>
-                        )}
-                        <div className="alc-header">
-                          <div className="alc-title">
-                            {l.title}
-                            {l._localOnly && (
-                              <span style={{ fontSize: "10px", background: "#fef3c7", color: "#d97706", padding: "2px 6px", borderRadius: "999px", marginLeft: "6px", fontWeight: 700 }}>
-                                Local only
+                          <div className="alc-meta">
+                            <span>📍 {l.city}{l.state ? `, ${l.state}` : ""}</span>
+                            <span>🛏 {l.bedrooms} bed</span>
+                            <span>🚿 {l.bathrooms} bath</span>
+                            <span>🏷 {l.propertyType}</span>
+                          </div>
+                          <div className="alc-price">₱{(parseFloat(l.price) || 0).toLocaleString()} / mo</div>
+                          <p className="alc-desc">{l.description ? l.description.slice(0, 120) + (l.description.length > 120 ? "…" : "") : "No description."}</p>
+                          <div className="alc-approval-actions">
+                            <span className="alc-approval-label">Owner submission — review required:</span>
+                            <button className="alc-btn approve" onClick={() => handleApproval(l.id, "approved")}>✓ Approve</button>
+                            <button className="alc-btn reject"  onClick={() => handleApproval(l.id, "rejected")}>✕ Reject</button>
+                          </div>
+                          <div className="alc-actions">
+                            <button className="alc-btn edit" onClick={() => openEdit(l)}>✏️ Edit</button>
+                            <button className="alc-btn delete" onClick={() => setDeleteConfirm(l.id)}>🗑 Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── LISTING FILTER TABS ── */}
+                <div className="admin-listing-filter-tabs">
+                  {[
+                    { key: "all",      label: `All (${listings.length})` },
+                    { key: "pending",  label: `Pending (${listings.filter((l) => l.approvalStatus === "pending").length})` },
+                    { key: "approved", label: `Approved (${listings.filter((l) => !l.approvalStatus || l.approvalStatus === "approved").length})` },
+                    { key: "rejected", label: `Rejected (${listings.filter((l) => l.approvalStatus === "rejected").length})` },
+                  ].map((f) => (
+                    <button
+                      key={f.key}
+                      className={`alc-filter-tab ${listingFilter === f.key ? "active" : ""}`}
+                      onClick={() => setListingFilter(f.key)}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ── LISTINGS GRID ── */}
+                {(() => {
+                  const filtered = listings.filter((l) => {
+                    if (listingFilter === "pending")  return l.approvalStatus === "pending";
+                    if (listingFilter === "approved") return !l.approvalStatus || l.approvalStatus === "approved";
+                    if (listingFilter === "rejected") return l.approvalStatus === "rejected";
+                    return true;
+                  });
+                  if (filtered.length === 0) return (
+                    <div className="admin-empty">
+                      <div className="empty-icon">🏠</div>
+                      <h3>{listingFilter === "all" ? "No listings yet" : `No ${listingFilter} listings`}</h3>
+                      <p>{listingFilter === "all" ? "Click \"Add New Listing\" to create your first property." : `No listings with \"${listingFilter}\" status.`}</p>
+                    </div>
+                  );
+                  return (
+                    <div className="admin-listings-grid">
+                      {[...filtered].reverse().map((l) => (
+                        <div key={l.id} className="admin-listing-card">
+                          {l.featuredImage && (
+                            <div className="alc-image"><img src={l.featuredImage} alt={l.title} /></div>
+                          )}
+                          <div className="alc-header">
+                            <div className="alc-title">
+                              {l.title}
+                              {l._localOnly && (
+                                <span style={{ fontSize: "10px", background: "#fef3c7", color: "#d97706", padding: "2px 6px", borderRadius: "999px", marginLeft: "6px", fontWeight: 700 }}>
+                                  Local only
+                                </span>
+                              )}
+                            </div>
+                            {l.approvalStatus === "pending" ? (
+                              <span className="alc-status pending-approval">⏳ Pending Review</span>
+                            ) : l.approvalStatus === "rejected" ? (
+                              <span className="alc-status rejected">✕ Rejected</span>
+                            ) : (
+                              <span className={`alc-status ${(l.status || "available").replace(/\s+/g, "-")}`}>
+                                {l.status === "available"            ? "● Available"
+                                  : l.status === "fully booked"      ? "● Fully Booked"
+                                  : l.status === "under maintenance" ? "● Under Maintenance"
+                                  : "● Occupied"}
                               </span>
                             )}
                           </div>
-                          <span className={`alc-status ${l.status}`}>
-                            {l.status === "available" ? "● Available" : "● Occupied"}
-                          </span>
+                          <div className="alc-meta">
+                            <span>📍 {l.city}{l.state ? `, ${l.state}` : ""}</span>
+                            <span>🛏 {l.bedrooms} bed</span>
+                            <span>🚿 {l.bathrooms} bath</span>
+                            <span>🏷 {l.propertyType}</span>
+                          </div>
+                          <div className="alc-price">₱{(parseFloat(l.price) || 0).toLocaleString()} / mo</div>
+                          <p className="alc-desc">{l.description ? l.description.slice(0, 100) + (l.description.length > 100 ? "…" : "") : "No description."}</p>
+                          {l.approvalStatus === "pending" && (
+                            <div className="alc-approval-actions">
+                              <span className="alc-approval-label">Owner submission — review required:</span>
+                              <button className="alc-btn approve" onClick={() => handleApproval(l.id, "approved")}>✓ Approve</button>
+                              <button className="alc-btn reject"  onClick={() => handleApproval(l.id, "rejected")}>✕ Reject</button>
+                            </div>
+                          )}
+                          <div className="alc-actions">
+                            <button className="alc-btn edit" onClick={() => openEdit(l)}>✏️ Edit</button>
+                            <button className="alc-btn delete" onClick={() => setDeleteConfirm(l.id)}>🗑 Delete</button>
+                          </div>
                         </div>
-                        <div className="alc-meta">
-                          <span>📍 {l.city}{l.state ? `, ${l.state}` : ""}</span>
-                          <span>🛏 {l.bedrooms} bed</span>
-                          <span>🚿 {l.bathrooms} bath</span>
-                          <span>🏷 {l.propertyType}</span>
-                        </div>
-                        <div className="alc-price">₱{(parseFloat(l.price) || 0).toLocaleString()} / mo</div>
-                        <p className="alc-desc">{l.description ? l.description.slice(0, 100) + (l.description.length > 100 ? "…" : "") : "No description."}</p>
-                        <div className="alc-actions">
-                          <button className="alc-btn edit" onClick={() => openEdit(l)}>✏️ Edit</button>
-                          <button className="alc-btn delete" onClick={() => setDeleteConfirm(l.id)}>🗑 Delete</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -279,7 +384,7 @@ function AdminDashboard() {
                 <div className="admin-section-header">
                   <h2>Booking Requests</h2>
                   <div className="admin-filter-pills">
-                    {["all","pending","confirmed","rejected"].map((f) => (
+                    {["all","pending","confirmed","rejected","cancelled"].map((f) => (
                       <button key={f} className={`filter-pill ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
                         {f.charAt(0).toUpperCase() + f.slice(1)}
                         {f === "pending" && pendingCount > 0 ? ` (${pendingCount})` : ""}
@@ -303,7 +408,7 @@ function AdminDashboard() {
                             <div className="bca-property">{b.propertyTitle}</div>
                             <div className="bca-tenant">👤 {b.userName}<span className="bca-email">{b.userEmail}</span></div>
                             <div className="bca-meta">
-                              <span>📅 Move-in: {b.checkIn}</span>
+                              <span>📅 Move-in: {b.checkIn ? new Date(b.checkIn).toLocaleDateString() : "—"}</span>
                               <span>🗓 {b.months} month{b.months !== 1 ? "s" : ""}</span>
                               <span>💰 ₱{(b.total || 0).toLocaleString()}</span>
                               <span>📌 {new Date(b.date).toLocaleDateString()}</span>

@@ -12,4 +12,5 @@ public class RegisterRequestDTO {
     private String password;
     private String fullName;
     private String phone;
+    private String role; // TENANT | OWNER — defaults to TENANT if omitted
 }

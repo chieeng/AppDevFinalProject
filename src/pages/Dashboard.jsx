@@ -1,40 +1,49 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { getBookingsByUser, getSavedIds } from "../data/adminData";
+import { getBookingsByUser, cancelBooking, getSavedIds } from "../data/adminData";
 import { getAllListings } from "../data/appData";
 import Card from "../components/Card";
 
-// Dashboard — shown to regular (non-admin) logged-in users
-// Shows their booking history with live status, and saved properties
 function Dashboard() {
   const userId   = localStorage.getItem("userId");
   const userName = localStorage.getItem("userFullName") || "User";
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [cancelling, setCancelling] = useState(null);
 
   const allListings = getAllListings();
   const savedIds    = getSavedIds();
   const savedListings = allListings.filter((p) => savedIds.includes(p.id)).slice(0, 3);
 
+  const fetchBookings = async () => {
+    try {
+      const mine = await getBookingsByUser(userId);
+      setBookings(mine || []);
+    } catch {
+      const cached = JSON.parse(localStorage.getItem("vs_bookings") || "[]");
+      setBookings(cached.filter((b) => String(b.userId) === String(userId)));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const mine = await getBookingsByUser(userId);
-        setBookings(mine);
-      } catch {
-        const cached = JSON.parse(localStorage.getItem("vs_bookings") || "[]");
-        setBookings(cached.filter((b) => String(b.userId) === String(userId)));
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchBookings();
   }, [userId]);
 
+  const handleCancel = async (id) => {
+    if (!window.confirm("Cancel this booking request?")) return;
+    setCancelling(id);
+    await cancelBooking(id);
+    await fetchBookings();
+    setCancelling(null);
+  };
+
   const statusStyle = (status) => {
-    if (status === "confirmed") return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
-    if (status === "rejected")  return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
+    if (status === "confirmed")  return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
+    if (status === "rejected")   return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
+    if (status === "cancelled")  return { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" };
     return { bg: "#fffbeb", color: "#d97706", border: "#fde68a" };
   };
 
@@ -48,7 +57,6 @@ function Dashboard() {
   return (
     <div className="dashboard-page">
 
-      {/* WELCOME BANNER */}
       <div className="dashboard-welcome">
         <div className="container">
           <div className="dash-welcome-inner">
@@ -66,7 +74,6 @@ function Dashboard() {
 
       <div className="container dash-content">
 
-        {/* STATS ROW */}
         <div className="dashboard-stats">
           {stats.map((s, i) => (
             <div key={i} className="dash-stat">
@@ -79,7 +86,6 @@ function Dashboard() {
           ))}
         </div>
 
-        {/* BOOKINGS */}
         <div className="dash-section">
           <div className="dash-section-header">
             <h2>My Booking Requests</h2>
@@ -99,25 +105,39 @@ function Dashboard() {
             <div className="bookings-list">
               {[...bookings].reverse().map((b) => {
                 const s = statusStyle(b.status);
+                const isPending = b.status === "pending";
                 return (
                   <div key={b.id} className="booking-row">
                     <div className="booking-row-info">
                       <div className="booking-row-title">{b.propertyTitle}</div>
                       <div className="booking-row-meta">
-                        <span>📅 Move-in: {b.checkIn}</span>
+                        <span>📅 Move-in: {b.checkIn ? new Date(b.checkIn).toLocaleDateString() : "—"}</span>
                         <span>🗓 {b.months} month{b.months !== 1 ? "s" : ""}</span>
                         <span>💰 ₱{(b.total || 0).toLocaleString()}</span>
                       </div>
                     </div>
-                    <span
-                      className="booking-status-pill"
-                      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
-                    >
-                      {b.status === "pending"   && "⏳ "}
-                      {b.status === "confirmed" && "✅ "}
-                      {b.status === "rejected"  && "❌ "}
-                      {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
-                    </span>
+                    <div className="booking-row-actions">
+                      <span
+                        className="booking-status-pill"
+                        style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
+                      >
+                        {b.status === "pending"   && "⏳ "}
+                        {b.status === "confirmed" && "✅ "}
+                        {b.status === "rejected"  && "❌ "}
+                        {b.status === "cancelled" && "🚫 "}
+                        {(b.status || "pending").charAt(0).toUpperCase() + (b.status || "pending").slice(1)}
+                      </span>
+                      {isPending && (
+                        <button
+                          className="booking-cancel-btn"
+                          onClick={() => handleCancel(b.id)}
+                          disabled={cancelling === b.id}
+                          title="Cancel this booking request"
+                        >
+                          {cancelling === b.id ? "…" : "Cancel"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -125,7 +145,6 @@ function Dashboard() {
           )}
         </div>
 
-        {/* SAVED PROPERTIES */}
         {savedListings.length > 0 && (
           <div className="dash-section">
             <div className="dash-section-header">
@@ -150,7 +169,6 @@ function Dashboard() {
           </div>
         )}
 
-        {/* QUICK LINKS */}
         <div className="dash-section">
           <div className="dash-section-header"><h2>Quick Links</h2></div>
           <div className="quick-actions">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import Card from "../components/Card";
 import { getAllListings } from "../data/appData";
-import { getSavedIds, toggleSaved } from "../data/adminData";
+import { getSavedIds } from "../data/adminData";
 
 function Saved() {
   const [savedIds, setSavedIds] = useState(() => getSavedIds());

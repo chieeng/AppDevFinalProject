@@ -30,10 +30,13 @@ function Home() {
     { label: "Pet Friendly", check: (p) => p.petFriendly },
   ];
 
+  // Only show approved listings on the homepage
+  const approvedProperties = allProperties.filter((p) => (p.approvalStatus || "approved") === "approved");
+
   const activeCheckFn = filters.find((f) => f.label === activeFilter)?.check || (() => true);
   const filtered = activeFilter === "All"
-    ? allProperties.slice(0, 6)
-    : allProperties.filter(activeCheckFn).slice(0, 6);
+    ? approvedProperties.slice(0, 6)
+    : approvedProperties.filter(activeCheckFn).slice(0, 6);
 
   const stats = [
     { number: "1,200+", label: "Happy Tenants",      icon: "😊" },
@@ -44,7 +47,7 @@ function Home() {
 
   const steps = [
     { number: "01", icon: "🔍", title: "Search",  description: "Browse verified boarding houses filtered by location, budget, and amenities." },
-    { number: "02", icon: "💬", title: "Inquire", description: "Message the admin directly with your questions and preferred move-in date." },
+    { number: "02", icon: "💬", title: "Inquire", description: "Message the owner or admin directly with your questions and preferred move-in date." },
     { number: "03", icon: "📅", title: "Book",    description: "Submit a booking request. Admin reviews and confirms within 24 hours." },
     { number: "04", icon: "🏠", title: "Move In", description: "Get your confirmation and move in on your chosen date." },
   ];
@@ -92,7 +95,10 @@ function Home() {
             ))}
           </div>
           {loading ? (
-            <div style={{ padding: "60px", textAlign: "center", color: "var(--color-text-muted)" }}>Loading properties...</div>
+            <div className="browse-loading">
+              <div className="browse-spinner" />
+              <p>Loading properties…</p>
+            </div>
           ) : (
             <div className="cards">
               {filtered.length === 0 ? (

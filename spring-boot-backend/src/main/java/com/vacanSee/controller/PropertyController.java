@@ -97,20 +97,31 @@ public class PropertyController {
         property.setHasMeals(bool(propertyDTO.getHasMeals()));
         property.setPetFriendly(bool(propertyDTO.getPetFriendly()));
         property.setFeaturedImage(propertyDTO.getFeaturedImage());
+        // Use supplied approvalStatus or default to "approved" (admin) / "pending" (owner)
+        String approval = propertyDTO.getApprovalStatus();
+        property.setApprovalStatus(approval != null ? approval : "approved");
 
         Property saved = propertyRepository.save(property);
         return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(saved));
     }
 
-    // PUT /api/properties/{id}
+    // PUT /api/properties/{id}?requesterId={userId}
+    // requesterId is optional — if provided (owner call), validates ownership; omit for admin
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateProperty(@PathVariable Long id, @RequestBody PropertyDTO dto) {
+    public ResponseEntity<?> updateProperty(
+            @PathVariable Long id,
+            @RequestBody PropertyDTO dto,
+            @RequestParam(required = false) Long requesterId) {
         var opt = propertyRepository.findById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Property not found"));
         }
         Property p = opt.get();
+        if (requesterId != null && !p.getOwner().getId().equals(requesterId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "You do not own this property"));
+        }
         if (dto.getTitle()        != null) p.setTitle(dto.getTitle());
         if (dto.getDescription()  != null) p.setDescription(dto.getDescription());
         if (dto.getPrice()        != null) p.setPrice(dto.getPrice());
@@ -130,17 +141,26 @@ public class PropertyController {
         if (dto.getHasBalcony()   != null) p.setHasBalcony(dto.getHasBalcony());
         if (dto.getHasWifi()      != null) p.setHasWifi(dto.getHasWifi());
         if (dto.getHasMeals()     != null) p.setHasMeals(dto.getHasMeals());
-        if (dto.getPetFriendly()  != null) p.setPetFriendly(dto.getPetFriendly());
+        if (dto.getPetFriendly()    != null) p.setPetFriendly(dto.getPetFriendly());
+        if (dto.getApprovalStatus() != null) p.setApprovalStatus(dto.getApprovalStatus());
         return ResponseEntity.ok(convertToDTO(propertyRepository.save(p)));
     }
 
-    // DELETE /api/properties/{id}
+    // DELETE /api/properties/{id}?requesterId={userId}
+    // requesterId optional — if provided (owner call), validates ownership; omit for admin
     // Must delete all dependent records first to avoid FK constraint violations.
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteProperty(@PathVariable Long id) {
-        if (!propertyRepository.existsById(id)) {
+    public ResponseEntity<?> deleteProperty(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long requesterId) {
+        var opt = propertyRepository.findById(id);
+        if (opt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Property not found"));
+        }
+        if (requesterId != null && !opt.get().getOwner().getId().equals(requesterId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "You do not own this property"));
         }
         // Delete dependents in FK-safe order
         imageRepository.deleteAll(imageRepository.findByPropertyId(id));
@@ -158,6 +178,27 @@ public class PropertyController {
         List<PropertyDTO> dtos = propertyRepository.findByOwnerId(ownerId).stream()
                 .map(this::convertToDTO).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
+    }
+
+    // PATCH /api/properties/{id}/approval — admin approves or rejects a pending listing
+    // Body: { "approvalStatus": "approved" | "rejected" }
+    @PatchMapping("/{id}/approval")
+    public ResponseEntity<?> updateApproval(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        var opt = propertyRepository.findById(id);
+        if (opt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Property not found"));
+        }
+        String status = body.get("approvalStatus");
+        if (!"approved".equals(status) && !"rejected".equals(status)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "approvalStatus must be 'approved' or 'rejected'"));
+        }
+        Property p = opt.get();
+        p.setApprovalStatus(status);
+        return ResponseEntity.ok(convertToDTO(propertyRepository.save(p)));
     }
 
     // GET /api/properties/city/{city}
@@ -203,6 +244,7 @@ public class PropertyController {
         dto.setHasMeals(p.getHasMeals());
         dto.setPetFriendly(p.getPetFriendly());
         dto.setFeaturedImage(p.getFeaturedImage());
+        dto.setApprovalStatus(p.getApprovalStatus() != null ? p.getApprovalStatus() : "approved");
         dto.setCreatedAt(p.getCreatedAt());
         dto.setUpdatedAt(p.getUpdatedAt());
         return dto;

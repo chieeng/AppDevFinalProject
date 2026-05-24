@@ -5,13 +5,22 @@ import listing1 from "../images/listing-1.jpg";
 import listing2 from "../images/listing-2.jpg";
 import listing3 from "../images/listing-3.png";
 
-function Card({ id, title, location, price, bedrooms, bathrooms, propertyType, status, featuredImage }) {
+function Card({ id, title, location, price, bedrooms, bathrooms, propertyType, status, featuredImage, approvalStatus }) {
   const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(() => getSavedIds().includes(id));
 
   const imgs = [listing1, listing2, listing3];
   const img  = featuredImage || imgs[parseInt(String(id).slice(-1)) % imgs.length];
   const isAvailable = !status || status === "available";
+
+  const statusLabel = isAvailable ? "Available"
+    : status === "fully booked"      ? "Fully Booked"
+    : status === "under maintenance" ? "Maintenance"
+    : "Occupied";
+
+  const statusBg = isAvailable ? "rgba(5,150,105,0.88)"
+    : status === "under maintenance" ? "rgba(217,119,6,0.85)"
+    : "rgba(220,38,38,0.85)";
 
   const handleSave = (e) => {
     e.stopPropagation();
@@ -92,10 +101,10 @@ function Card({ id, title, location, price, bedrooms, bathrooms, propertyType, s
           borderRadius: "999px",
           fontSize: "11px",
           fontWeight: 700,
-          background: isAvailable ? "rgba(5,150,105,0.88)" : "rgba(220,38,38,0.85)",
+          background: statusBg,
           color: "#fff",
         }}>
-          ● {isAvailable ? "Available" : "Occupied"}
+          ● {statusLabel}
         </span>
 
         {/* Type badge — bottom LEFT */}
@@ -113,6 +122,24 @@ function Card({ id, title, location, price, bedrooms, bathrooms, propertyType, s
             borderRadius: "999px",
           }}>
             {propertyType}
+          </span>
+        )}
+
+        {/* Approval status badge (admin only) — bottom RIGHT */}
+        {approvalStatus && approvalStatus !== "approved" && (
+          <span style={{
+            position: "absolute",
+            bottom: "8px",
+            right: "8px",
+            zIndex: 10,
+            background: approvalStatus === "pending" ? "rgba(217,119,6,0.9)" : "rgba(220,38,38,0.88)",
+            color: "#fff",
+            fontSize: "11px",
+            fontWeight: 700,
+            padding: "3px 8px",
+            borderRadius: "999px",
+          }}>
+            {approvalStatus === "pending" ? "⏳ Pending" : "✕ Rejected"}
           </span>
         )}
       </div>

@@ -33,6 +33,10 @@ public class User {
     @Column(name = "profile_image")
     private String profileImage;
 
+    // TENANT | OWNER | ADMIN — default TENANT for all new registrations
+    @Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'TENANT'")
+    private String role = "TENANT";
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

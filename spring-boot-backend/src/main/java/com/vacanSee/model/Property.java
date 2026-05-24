@@ -83,6 +83,11 @@ public class Property {
     @Column(name = "featured_image", columnDefinition = "LONGTEXT")
     private String featuredImage;
 
+    // "approved" (visible to public) | "pending" (awaiting admin review) | "rejected"
+    @Column(name = "approval_status", nullable = false,
+            columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'approved'")
+    private String approvalStatus = "approved";
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
