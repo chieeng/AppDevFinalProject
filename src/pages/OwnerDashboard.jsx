@@ -158,6 +158,7 @@ function OwnerDashboard() {
   // ── Helpers ──────────────────────────────────────
   const statusStyle = (s) => {
     if (s === "confirmed")  return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
+    if (s === "completed")  return { bg: "#eff6ff", color: "#2563eb", border: "#bfdbfe" };
     if (s === "rejected")   return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
     if (s === "cancelled")  return { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" };
     return { bg: "#fffbeb", color: "#d97706", border: "#fde68a" };
@@ -430,7 +431,7 @@ function OwnerDashboard() {
             <div className="owner-section-header">
               <h2>Bookings</h2>
               <div className="owner-filter-pills">
-                {["all","pending","confirmed","rejected","cancelled"].map((f) => (
+                {["all","pending","confirmed","completed","rejected","cancelled"].map((f) => (
                   <button
                     key={f}
                     className={`owner-pill ${bookingFilter === f ? "active" : ""}`}
@@ -462,6 +463,13 @@ function OwnerDashboard() {
                         </div>
                         <div className="obc-dates">
                           📅 Check-in: {b.checkIn ? new Date(b.checkIn).toLocaleDateString() : "—"}
+                          {b.months && (
+                            <> &nbsp;→&nbsp; Check-out: {(() => {
+                              const d = new Date(b.checkIn);
+                              d.setDate(d.getDate() + b.months * 30);
+                              return d.toLocaleDateString();
+                            })()}</>
+                          )}
                         </div>
                         <div className="obc-total">
                           💰 Total: ₱{Number(b.total || 0).toLocaleString()}

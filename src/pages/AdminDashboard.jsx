@@ -184,6 +184,7 @@ function AdminDashboard() {
 
   const statusStyle = (s) => {
     if (s === "confirmed")  return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
+    if (s === "completed")  return { bg: "#eff6ff", color: "#2563eb", border: "#bfdbfe" };
     if (s === "rejected")   return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
     if (s === "cancelled")  return { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" };
     return { bg: "#fffbeb", color: "#d97706", border: "#fde68a" };
@@ -384,7 +385,7 @@ function AdminDashboard() {
                 <div className="admin-section-header">
                   <h2>Booking Requests</h2>
                   <div className="admin-filter-pills">
-                    {["all","pending","confirmed","rejected","cancelled"].map((f) => (
+                    {["all","pending","confirmed","completed","rejected","cancelled"].map((f) => (
                       <button key={f} className={`filter-pill ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
                         {f.charAt(0).toUpperCase() + f.slice(1)}
                         {f === "pending" && pendingCount > 0 ? ` (${pendingCount})` : ""}

@@ -2,6 +2,7 @@ package com.vacanSee.controller;
 
 import com.vacanSee.dto.BookingDTO;
 import com.vacanSee.model.Booking;
+import com.vacanSee.model.Property;
 import com.vacanSee.repository.BookingRepository;
 import com.vacanSee.repository.PropertyRepository;
 import com.vacanSee.repository.UserRepository;
@@ -127,8 +128,27 @@ public class BookingController {
             }
         }
 
+        String previousStatus = b.getStatus();
         b.setStatus(status);
-        return ResponseEntity.ok(toDTO(bookingRepository.save(b)));
+        bookingRepository.save(b);
+
+        // ── Sync property availability status ─────────────────────────────────
+        // Confirming a booking → mark the property occupied.
+        // Cancelling/rejecting a booking that was already confirmed → revert to available.
+        Property property = b.getProperty();
+        if (property != null) {
+            if ("confirmed".equals(status)) {
+                property.setStatus("occupied");
+                propertyRepository.save(property);
+            } else if (("cancelled".equals(status) || "rejected".equals(status))
+                    && "confirmed".equals(previousStatus)
+                    && "occupied".equals(property.getStatus())) {
+                property.setStatus("available");
+                propertyRepository.save(property);
+            }
+        }
+
+        return ResponseEntity.ok(toDTO(bookingRepository.findById(b.getId()).orElse(b)));
     }
 
     // ── PUT full update ───────────────────────────────

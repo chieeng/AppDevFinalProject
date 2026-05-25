@@ -285,7 +285,11 @@ export async function updateBookingStatus(id, status) {
     });
   } catch {}
   const bookings = lsGet("vs_bookings");
+  const booking  = bookings.find((b) => b.id === id);
   lsSet("vs_bookings", bookings.map((b) => (b.id === id ? { ...b, status } : b)));
+
+  // Mirror property availability in all caches
+  if (booking?.propertyId) syncPropertyStatus(booking.propertyId, booking.status, status);
 }
 
 export async function cancelBooking(id) {
@@ -460,6 +464,36 @@ export async function deleteListing(id) {
 }
 
 // ============================================================
+// PROPERTY STATUS SYNC HELPER
+// Called whenever a booking transitions to/from "confirmed" so the
+// listing status in all three localStorage caches stays in sync with
+// the backend without needing a full re-fetch.
+// ============================================================
+
+function syncPropertyStatus(propertyId, previousBookingStatus, newBookingStatus) {
+  let newPropertyStatus = null;
+
+  if (newBookingStatus === "confirmed") {
+    newPropertyStatus = "occupied";
+  } else if (
+    (newBookingStatus === "cancelled" || newBookingStatus === "rejected") &&
+    previousBookingStatus === "confirmed"
+  ) {
+    // Booking was approved but is now being cancelled — free up the listing
+    newPropertyStatus = "available";
+  }
+
+  if (!newPropertyStatus) return;
+
+  ["vs_owner_listings", "vs_properties", "vs_admin_listings"].forEach((key) => {
+    const listings = lsGet(key);
+    lsSet(key, listings.map((l) =>
+      Number(l.id) === Number(propertyId) ? { ...l, status: newPropertyStatus } : l
+    ));
+  });
+}
+
+// ============================================================
 // OWNER-SCOPED DATA FUNCTIONS
 // These wrap the owner-specific backend endpoints so owners
 // only see their own listings, bookings, and inquiries.
@@ -593,7 +627,11 @@ export async function updateOwnerBookingStatus(bookingId, status, ownerId) {
     body: JSON.stringify({ status, requesterId: ownerId }),
   });
   const bookings = lsGet("vs_owner_bookings");
+  const booking  = bookings.find((b) => b.id === bookingId);
   lsSet("vs_owner_bookings", bookings.map((b) => (b.id === bookingId ? { ...b, status } : b)));
+
+  // Mirror property availability in all caches
+  if (booking?.propertyId) syncPropertyStatus(booking.propertyId, booking.status, status);
 }
 
 // Owner replies to an inquiry about their property

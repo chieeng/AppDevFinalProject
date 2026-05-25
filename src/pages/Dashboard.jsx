@@ -42,6 +42,7 @@ function Dashboard() {
 
   const statusStyle = (status) => {
     if (status === "confirmed")  return { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" };
+    if (status === "completed")  return { bg: "#eff6ff", color: "#2563eb", border: "#bfdbfe" };
     if (status === "rejected")   return { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" };
     if (status === "cancelled")  return { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1" };
     return { bg: "#fffbeb", color: "#d97706", border: "#fde68a" };
@@ -123,6 +124,7 @@ function Dashboard() {
                       >
                         {b.status === "pending"   && "⏳ "}
                         {b.status === "confirmed" && "✅ "}
+                        {b.status === "completed" && "🏁 "}
                         {b.status === "rejected"  && "❌ "}
                         {b.status === "cancelled" && "🚫 "}
                         {(b.status || "pending").charAt(0).toUpperCase() + (b.status || "pending").slice(1)}
