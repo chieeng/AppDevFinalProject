@@ -43,7 +43,9 @@ function AdminDashboard() {
   const [replyText, setReplyText]   = useState("");
   const [replying, setReplying]     = useState(false);
 
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading]       = useState(true);
+  const [syncing, setSyncing]       = useState(false);
+  const [syncResult, setSyncResult] = useState("");
 
   useEffect(() => {
     if (localStorage.getItem("userRole") !== "ADMIN") { navigate("/login"); return; }
@@ -170,6 +172,23 @@ function AdminDashboard() {
     loadAll();
   };
 
+  // ── Force expiry sync ────────────────────────
+  const handleSyncStatus = async () => {
+    setSyncing(true);
+    setSyncResult("");
+    try {
+      const res = await fetch("http://localhost:8000/api/admin/sync-status", { method: "POST" });
+      const data = await res.json();
+      setSyncResult(data.message || "Done.");
+      await loadAll(); // refresh listings to reflect any reverted statuses
+    } catch {
+      setSyncResult("Could not reach backend.");
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncResult(""), 5000);
+    }
+  };
+
   // ── Listing approval action ──────────────────
   const handleApproval = async (id, approvalStatus) => {
     await setListingApproval(id, approvalStatus);
@@ -207,6 +226,17 @@ function AdminDashboard() {
             )}
             <div className="admin-stat-pill"><span>{pendingCount}</span> pending bookings</div>
             <div className="admin-stat-pill unread"><span>{unreadCount}</span> unread messages</div>
+            <button
+              className="admin-refresh-btn"
+              onClick={handleSyncStatus}
+              disabled={syncing}
+              title="Force-check all confirmed bookings and revert expired ones to available"
+            >
+              {syncing ? "Syncing…" : "🔄 Sync Status"}
+            </button>
+            {syncResult && (
+              <span style={{ fontSize: "12px", color: "#fff", opacity: 0.85 }}>{syncResult}</span>
+            )}
           </div>
         </div>
       </div>
