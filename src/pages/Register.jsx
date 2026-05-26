@@ -9,9 +9,12 @@ function Register({ setIsLoggedIn }) {
   const [formData, setFormData] = useState({
     fullName: "", email: "", password: "", confirmPassword: "",
   });
+  const [permitImage, setPermitImage]   = useState(null);   // base64
+  const [permitPreview, setPermitPreview] = useState(null); // blob URL for preview
   const [error,   setError]   = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState(false); // owner submitted, awaiting admin
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -29,6 +32,25 @@ function Register({ setIsLoggedIn }) {
     }
   };
 
+  const handlePermitUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Business permit image must be under 5 MB.");
+      return;
+    }
+    setPermitPreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onloadend = () => setPermitImage(reader.result);
+    reader.readAsDataURL(file);
+    setError("");
+  };
+
+  const removePermit = () => {
+    setPermitImage(null);
+    setPermitPreview(null);
+  };
+
   const handleRegister = async () => {
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.password) {
       setError("Please fill in all required fields.");
@@ -42,6 +64,11 @@ function Register({ setIsLoggedIn }) {
       setError("Password must be at least 6 characters.");
       return;
     }
+    if (selectedRole === "OWNER" && !permitImage) {
+      setError("Please upload your business permit image to continue.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     setSuccess("");
@@ -51,21 +78,25 @@ function Register({ setIsLoggedIn }) {
         email:    formData.email.trim(),
         password: formData.password,
         role:     selectedRole,
+        businessPermitImage: selectedRole === "OWNER" ? permitImage : null,
       };
       const response = await authService.register(payload);
-      const role = response.role || selectedRole;
-      localStorage.setItem("userId",       String(response.userId));
-      localStorage.setItem("userEmail",    response.email    || formData.email);
-      localStorage.setItem("userFullName", response.fullName || formData.fullName);
-      localStorage.setItem("userRole",     role);
-      localStorage.setItem("isLoggedIn",   "true");
-      if (setIsLoggedIn) setIsLoggedIn(true);
-      setSuccess(
-        role === "OWNER"
-          ? "Owner account created! Redirecting to your dashboard…"
-          : "Account created! Redirecting to your dashboard…"
-      );
-      setTimeout(() => navigate(role === "OWNER" ? "/owner-dashboard" : "/dashboard"), 1500);
+
+      if (selectedRole === "OWNER") {
+        // Owner accounts need admin approval — do NOT log in
+        setPending(true);
+      } else {
+        // Tenant — log in immediately
+        const role = response.role || "TENANT";
+        localStorage.setItem("userId",       String(response.userId));
+        localStorage.setItem("userEmail",    response.email    || formData.email);
+        localStorage.setItem("userFullName", response.fullName || formData.fullName);
+        localStorage.setItem("userRole",     role);
+        localStorage.setItem("isLoggedIn",   "true");
+        if (setIsLoggedIn) setIsLoggedIn(true);
+        setSuccess("Account created! Redirecting to your dashboard…");
+        setTimeout(() => navigate("/dashboard"), 1500);
+      }
     } catch (err) {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
@@ -74,8 +105,35 @@ function Register({ setIsLoggedIn }) {
   };
 
   const handleKey = (e) => { if (e.key === "Enter") handleRegister(); };
+  const disabled = loading || !!success || pending;
 
-  const disabled = loading || !!success;
+  // ── Pending approval screen (shown after owner submits) ───────
+  if (pending) {
+    return (
+      <div className="auth-page">
+        <div className="auth-container">
+          <div className="auth-card">
+            <div className="auth-logo">⏳</div>
+            <h3>Application Submitted!</h3>
+            <div className="owner-pending-card">
+              <p>Your owner account application has been received.</p>
+              <ul className="owner-pending-steps">
+                <li>✅ Account created</li>
+                <li>⏳ Admin review — in progress</li>
+                <li>📧 You will be notified once approved</li>
+              </ul>
+              <p style={{ fontSize: "13px", color: "var(--color-text-muted)", marginTop: "12px" }}>
+                Once your business permit is verified, you can log in and start listing your property.
+              </p>
+            </div>
+            <Link to="/login" className="btn-continue" style={{ display: "block", textAlign: "center", textDecoration: "none", marginTop: "16px" }}>
+              Go to Login
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">
@@ -160,13 +218,35 @@ function Register({ setIsLoggedIn }) {
             disabled={disabled}
           />
 
-          {/* ── Owner note ────────────────────────── */}
+          {/* ── Owner: business permit upload ─────── */}
           {selectedRole === "OWNER" && (
             <div className="owner-extra-fields">
-              <p className="owner-extra-label">🏠 Owner account</p>
-              <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
-                After registration you will be taken to your Owner Dashboard where you can add and manage your listings.
+              <p className="owner-extra-label">📋 Business Permit Required</p>
+              <p style={{ fontSize: "13px", color: "var(--color-text-muted)", marginBottom: "10px", lineHeight: 1.5 }}>
+                Upload a photo of your DTI / Mayor's Permit / Business Permit. Your account will be reviewed by admin before activation.
               </p>
+
+              {permitPreview ? (
+                <div className="permit-preview-wrap">
+                  <img src={permitPreview} alt="Business permit preview" className="permit-preview-img" />
+                  <button type="button" className="permit-remove-btn" onClick={removePermit} disabled={disabled}>
+                    ✕ Remove
+                  </button>
+                </div>
+              ) : (
+                <label className="permit-upload-zone">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={handlePermitUpload}
+                    disabled={disabled}
+                    style={{ display: "none" }}
+                  />
+                  <span className="permit-upload-icon">📄</span>
+                  <span className="permit-upload-text">Click to upload business permit</span>
+                  <span className="permit-upload-hint">JPG, PNG, WEBP — max 5 MB</span>
+                </label>
+              )}
             </div>
           )}
 
@@ -181,8 +261,8 @@ function Register({ setIsLoggedIn }) {
               : success
               ? "Redirecting…"
               : selectedRole === "OWNER"
-              ? "Create owner account"
-              : "Create tenant account"}
+              ? "Submit Owner Application"
+              : "Create Account"}
           </button>
 
           <p className="other">

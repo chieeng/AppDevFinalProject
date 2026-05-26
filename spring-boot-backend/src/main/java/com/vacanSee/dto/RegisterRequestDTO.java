@@ -13,4 +13,5 @@ public class RegisterRequestDTO {
     private String fullName;
     private String phone;
     private String role; // TENANT | OWNER — defaults to TENANT if omitted
+    private String businessPermitImage; // base64, required for OWNER
 }

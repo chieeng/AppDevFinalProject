@@ -215,3 +215,6 @@
   box-shadow: 0 3px 10px rgba(15,164,146,0.25);
   letter-spacing: 0.2px;
 }
+
+/* Owner name on card */
+.card-owner { font-size: 12px; color: var(--color-text-muted); margin: 2px 0 6px; display: flex; align-items: center; gap: 4px; }

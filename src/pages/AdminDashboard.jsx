@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getMessages, markMessageRead, replyToMessage,
   getBookings, updateBookingStatus,
   getAdminListings, addListing, updateListing, deleteListing, setListingApproval,
 } from "../data/adminData";
@@ -37,27 +36,46 @@ function AdminDashboard() {
   const [bookings, setBookings]   = useState([]);
   const [filter, setFilter]       = useState("all");
 
-  // ── Messages state ──
-  const [messages, setMessages]   = useState([]);
-  const [replyModal, setReplyModal] = useState(null);
-  const [replyText, setReplyText]   = useState("");
-  const [replying, setReplying]     = useState(false);
-
   const [loading, setLoading]       = useState(true);
   const [syncing, setSyncing]       = useState(false);
   const [syncResult, setSyncResult] = useState("");
+
+  // ── Users state ──
+  const [users, setUsers]                   = useState([]);
+  const [userDeleteConfirm, setUserDeleteConfirm] = useState(null);
+  const [editRoleUser, setEditRoleUser]     = useState(null);
+  const [roleUpdating, setRoleUpdating]     = useState(false);
+
+  // ── Owner requests state ──
+  const [ownerRequests, setOwnerRequests]   = useState([]);
+  const [permitModal, setPermitModal]       = useState(null); // user object whose permit is being viewed
 
   useEffect(() => {
     if (localStorage.getItem("userRole") !== "ADMIN") { navigate("/login"); return; }
     loadAll();
   }, []);
 
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/admin/users");
+      return res.ok ? await res.json() : [];
+    } catch { return []; }
+  };
+
+  const fetchOwnerRequests = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/admin/owner-requests");
+      return res.ok ? await res.json() : [];
+    } catch { return []; }
+  };
+
   const loadAll = async () => {
     setLoading(true);
-    const [backendListings, b, m] = await Promise.all([
+    const [backendListings, b, u, or] = await Promise.all([
       getAdminListings(),
       getBookings(),
-      getMessages(),
+      fetchUsers(),
+      fetchOwnerRequests(),
     ]);
 
     // Supplement with any listings from vs_properties that didn't come back from the backend.
@@ -74,7 +92,8 @@ function AdminDashboard() {
     const merged = [...localOnly, ...extraFromProps, ...backendListings];
     setListings(merged);
     setBookings(b);
-    setMessages(m);
+    setUsers(u);
+    setOwnerRequests(or);
     setLoading(false);
   };
 
@@ -157,21 +176,6 @@ function AdminDashboard() {
     loadAll();
   };
 
-  // ── Message actions ──────────────────────────
-  const openReply = (msg) => {
-    markMessageRead(msg.id);
-    setReplyModal(msg);
-    setReplyText(msg.reply || "");
-  };
-  const handleSendReply = async () => {
-    if (!replyText.trim()) return;
-    setReplying(true);
-    await replyToMessage(replyModal.id, replyText.trim());
-    setReplying(false);
-    setReplyModal(null);
-    loadAll();
-  };
-
   // ── Force expiry sync ────────────────────────
   const handleSyncStatus = async () => {
     setSyncing(true);
@@ -195,10 +199,42 @@ function AdminDashboard() {
     loadAll();
   };
 
+  // ── User actions ─────────────────────────────
+  const handleUpdateRole = async (userId, newRole) => {
+    setRoleUpdating(true);
+    try {
+      await fetch(`http://localhost:8000/api/admin/users/${userId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u));
+    } finally {
+      setEditRoleUser(null);
+      setRoleUpdating(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    await fetch(`http://localhost:8000/api/admin/users/${userId}`, { method: "DELETE" });
+    setUserDeleteConfirm(null);
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+  };
+
+  const handleOwnerRequest = async (userId, accountStatus) => {
+    await fetch(`http://localhost:8000/api/admin/users/${userId}/account-status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountStatus }),
+    });
+    setOwnerRequests((prev) => prev.filter((u) => u.id !== userId));
+    // Refresh full user list so the Users tab stays in sync
+    fetchUsers().then(setUsers);
+  };
+
   // ── Derived counts ───────────────────────────
   const pendingApprovalCount = listings.filter((l) => l.approvalStatus === "pending").length;
   const pendingCount  = bookings.filter((b) => b.status === "pending").length;
-  const unreadCount   = messages.filter((m) => !m.read).length;
   const filteredBk    = filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
 
   const statusStyle = (s) => {
@@ -225,7 +261,6 @@ function AdminDashboard() {
               <div className="admin-stat-pill unread"><span>{pendingApprovalCount}</span> pending approval</div>
             )}
             <div className="admin-stat-pill"><span>{pendingCount}</span> pending bookings</div>
-            <div className="admin-stat-pill unread"><span>{unreadCount}</span> unread messages</div>
             <button
               className="admin-refresh-btn"
               onClick={handleSyncStatus}
@@ -253,9 +288,12 @@ function AdminDashboard() {
             📅 Bookings
             {pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
           </button>
-          <button className={`admin-tab ${tab === "messages" ? "active" : ""}`} onClick={() => setTab("messages")}>
-            💬 Messages
-            {unreadCount > 0 && <span className="tab-badge">{unreadCount}</span>}
+          <button className={`admin-tab ${tab === "users" ? "active" : ""}`} onClick={() => setTab("users")}>
+            👥 Users <span className="tab-count">{users.length}</span>
+          </button>
+          <button className={`admin-tab ${tab === "requests" ? "active" : ""}`} onClick={() => setTab("requests")}>
+            📋 Owner Requests
+            {ownerRequests.length > 0 && <span className="tab-badge">{ownerRequests.length}</span>}
           </button>
         </div>
 
@@ -276,47 +314,6 @@ function AdminDashboard() {
                     <button className="admin-add-btn" onClick={openNew}>+ Add New Listing</button>
                   </div>
                 </div>
-
-                {/* ── PENDING APPROVAL BANNER (always shown first when there are pending listings) ── */}
-                {listings.filter((l) => l.approvalStatus === "pending").length > 0 && (
-                  <div className="admin-pending-section">
-                    <div className="admin-pending-header">
-                      <span className="admin-pending-icon">⏳</span>
-                      <div>
-                        <h3>Pending Owner Submissions</h3>
-                        <p>{listings.filter((l) => l.approvalStatus === "pending").length} listing{listings.filter((l) => l.approvalStatus === "pending").length !== 1 ? "s" : ""} waiting for your approval</p>
-                      </div>
-                    </div>
-                    <div className="admin-listings-grid">
-                      {listings.filter((l) => l.approvalStatus === "pending").map((l) => (
-                        <div key={l.id} className="admin-listing-card pending-card">
-                          {l.featuredImage && <div className="alc-image"><img src={l.featuredImage} alt={l.title} /></div>}
-                          <div className="alc-header">
-                            <div className="alc-title">{l.title}</div>
-                            <span className="alc-status pending-approval">⏳ Pending Review</span>
-                          </div>
-                          <div className="alc-meta">
-                            <span>📍 {l.city}{l.state ? `, ${l.state}` : ""}</span>
-                            <span>🛏 {l.bedrooms} bed</span>
-                            <span>🚿 {l.bathrooms} bath</span>
-                            <span>🏷 {l.propertyType}</span>
-                          </div>
-                          <div className="alc-price">₱{(parseFloat(l.price) || 0).toLocaleString()} / mo</div>
-                          <p className="alc-desc">{l.description ? l.description.slice(0, 120) + (l.description.length > 120 ? "…" : "") : "No description."}</p>
-                          <div className="alc-approval-actions">
-                            <span className="alc-approval-label">Owner submission — review required:</span>
-                            <button className="alc-btn approve" onClick={() => handleApproval(l.id, "approved")}>✓ Approve</button>
-                            <button className="alc-btn reject"  onClick={() => handleApproval(l.id, "rejected")}>✕ Reject</button>
-                          </div>
-                          <div className="alc-actions">
-                            <button className="alc-btn edit" onClick={() => openEdit(l)}>✏️ Edit</button>
-                            <button className="alc-btn delete" onClick={() => setDeleteConfirm(l.id)}>🗑 Delete</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* ── LISTING FILTER TABS ── */}
                 <div className="admin-listing-filter-tabs">
@@ -388,17 +385,18 @@ function AdminDashboard() {
                           </div>
                           <div className="alc-price">₱{(parseFloat(l.price) || 0).toLocaleString()} / mo</div>
                           <p className="alc-desc">{l.description ? l.description.slice(0, 100) + (l.description.length > 100 ? "…" : "") : "No description."}</p>
-                          {l.approvalStatus === "pending" && (
+                          {l.approvalStatus === "pending" ? (
                             <div className="alc-approval-actions">
                               <span className="alc-approval-label">Owner submission — review required:</span>
                               <button className="alc-btn approve" onClick={() => handleApproval(l.id, "approved")}>✓ Approve</button>
                               <button className="alc-btn reject"  onClick={() => handleApproval(l.id, "rejected")}>✕ Reject</button>
                             </div>
+                          ) : (
+                            <div className="alc-actions">
+                              <button className="alc-btn edit" onClick={() => openEdit(l)}>✏️ Edit</button>
+                              <button className="alc-btn delete" onClick={() => setDeleteConfirm(l.id)}>🗑 Delete</button>
+                            </div>
                           )}
-                          <div className="alc-actions">
-                            <button className="alc-btn edit" onClick={() => openEdit(l)}>✏️ Edit</button>
-                            <button className="alc-btn delete" onClick={() => setDeleteConfirm(l.id)}>🗑 Delete</button>
-                          </div>
                         </div>
                       ))}
                     </div>
@@ -463,41 +461,173 @@ function AdminDashboard() {
             )}
 
             {/* ════════════════════════════════════
-                MESSAGES TAB
+                USERS TAB
             ════════════════════════════════════ */}
-            {tab === "messages" && (
+            {tab === "users" && (
               <div className="admin-section">
                 <div className="admin-section-header">
-                  <h2>Messages from Tenants</h2>
-                  <p className="admin-section-sub">Click Reply to respond. Tenants see replies in their Messages page.</p>
+                  <h2>User Accounts</h2>
+                  <p className="admin-section-sub">{users.length} registered account{users.length !== 1 ? "s" : ""}</p>
                 </div>
-                {messages.length === 0 ? (
+
+                {users.length === 0 ? (
                   <div className="admin-empty">
-                    <div className="empty-icon">💬</div>
-                    <h3>No messages yet</h3>
-                    <p>Tenant inquiries sent via listings will appear here.</p>
+                    <div className="empty-icon">👥</div>
+                    <h3>No users found</h3>
+                    <p>Registered accounts will appear here.</p>
                   </div>
                 ) : (
-                  <div className="message-cards-admin">
-                    {[...messages].reverse().map((msg) => (
-                      <div key={msg.id} className={`message-card-admin ${!msg.read ? "unread" : ""}`}>
-                        <div className="mca-avatar">{(msg.fromName || "U")[0].toUpperCase()}</div>
-                        <div className="mca-body">
-                          <div className="mca-top">
-                            <strong>{msg.fromName || "Anonymous"}</strong>
-                            <span className="mca-email">{msg.fromEmail}</span>
-                            {!msg.read && <span className="mca-new-badge">NEW</span>}
-                            <span className="mca-time">{new Date(msg.date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="mca-property">Re: {msg.propertyTitle}</div>
-                          <div className="mca-text">{msg.text}</div>
-                          {msg.reply && (
-                            <div className="mca-reply-preview">
-                              <span className="mca-reply-label">Your reply:</span> {msg.reply}
+                  <div className="users-table-wrap">
+                    <table className="users-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Joined</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((u) => {
+                          const roleBg = u.role === "ADMIN"  ? { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" }
+                                       : u.role === "OWNER"  ? { bg: "#eff6ff", color: "#2563eb", border: "#bfdbfe" }
+                                       : { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" };
+                          const isEditing = editRoleUser?.id === u.id;
+                          return (
+                            <tr key={u.id}>
+                              <td className="ut-id">#{u.id}</td>
+                              <td className="ut-name">
+                                <span className="ut-avatar">{(u.fullName || "U")[0].toUpperCase()}</span>
+                                {u.fullName || "—"}
+                              </td>
+                              <td className="ut-email">{u.email}</td>
+                              <td className="ut-role">
+                                {isEditing ? (
+                                  <div className="ut-role-edit">
+                                    <select
+                                      defaultValue={u.role}
+                                      onChange={(e) => setEditRoleUser({ id: u.id, role: e.target.value })}
+                                      disabled={roleUpdating}
+                                    >
+                                      <option value="TENANT">TENANT</option>
+                                      <option value="OWNER">OWNER</option>
+                                      <option value="ADMIN">ADMIN</option>
+                                    </select>
+                                    <button
+                                      className="ut-btn save"
+                                      onClick={() => handleUpdateRole(u.id, editRoleUser.role || u.role)}
+                                      disabled={roleUpdating}
+                                    >
+                                      {roleUpdating ? "…" : "Save"}
+                                    </button>
+                                    <button className="ut-btn cancel" onClick={() => setEditRoleUser(null)} disabled={roleUpdating}>✕</button>
+                                  </div>
+                                ) : (
+                                  <span
+                                    className="ut-role-pill"
+                                    style={{ background: roleBg.bg, color: roleBg.color, border: `1px solid ${roleBg.border}` }}
+                                  >
+                                    {u.role}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="ut-joined">
+                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
+                              </td>
+                              <td className="ut-actions">
+                                {!isEditing && (
+                                  <button
+                                    className="ut-btn edit"
+                                    onClick={() => setEditRoleUser({ id: u.id, role: u.role })}
+                                  >
+                                    ✏️ Edit Role
+                                  </button>
+                                )}
+                                <button
+                                  className="ut-btn delete"
+                                  onClick={() => setUserDeleteConfirm(u)}
+                                >
+                                  🗑 Delete
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* ════════════════════════════════════
+                OWNER REQUESTS TAB
+            ════════════════════════════════════ */}
+            {tab === "requests" && (
+              <div className="admin-section">
+                <div className="admin-section-header">
+                  <h2>Owner Account Requests</h2>
+                  <p className="admin-section-sub">
+                    {ownerRequests.length === 0
+                      ? "No pending applications."
+                      : `${ownerRequests.length} application${ownerRequests.length !== 1 ? "s" : ""} waiting for review`}
+                  </p>
+                </div>
+
+                {ownerRequests.length === 0 ? (
+                  <div className="admin-empty">
+                    <div className="empty-icon">✅</div>
+                    <h3>All caught up!</h3>
+                    <p>No pending owner account applications.</p>
+                  </div>
+                ) : (
+                  <div className="owner-requests-grid">
+                    {ownerRequests.map((req) => (
+                      <div key={req.id} className="owner-request-card">
+                        <div className="orc-header">
+                          <div className="orc-avatar">{(req.fullName || "O")[0].toUpperCase()}</div>
+                          <div className="orc-info">
+                            <div className="orc-name">{req.fullName}</div>
+                            <div className="orc-email">{req.email}</div>
+                            <div className="orc-date">
+                              Applied: {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : "—"}
                             </div>
+                          </div>
+                          <span className="orc-status-pill">⏳ Pending</span>
+                        </div>
+
+                        <div className="orc-permit-section">
+                          <p className="orc-permit-label">Business Permit</p>
+                          {req.businessPermitImage ? (
+                            <div className="orc-permit-thumb-wrap">
+                              <img
+                                src={req.businessPermitImage}
+                                alt="Business permit"
+                                className="orc-permit-thumb"
+                                onClick={() => setPermitModal(req)}
+                              />
+                              <button className="orc-view-btn" onClick={() => setPermitModal(req)}>
+                                🔍 View Full Image
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="orc-no-permit">No permit image uploaded.</p>
                           )}
-                          <button className="mca-reply-btn" onClick={() => openReply(msg)}>
-                            {msg.reply ? "✏️ Edit Reply" : "💬 Reply"}
+                        </div>
+
+                        <div className="orc-actions">
+                          <button
+                            className="orc-btn approve"
+                            onClick={() => handleOwnerRequest(req.id, "active")}
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            className="orc-btn reject"
+                            onClick={() => handleOwnerRequest(req.id, "rejected")}
+                          >
+                            ✕ Reject
                           </button>
                         </div>
                       </div>
@@ -662,37 +792,6 @@ function AdminDashboard() {
       )}
 
       {/* ════════════════════════════════════════
-          REPLY MODAL
-      ════════════════════════════════════════ */}
-      {replyModal && (
-        <div className="modal-overlay" onClick={() => setReplyModal(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h2>Reply to {replyModal.fromName}</h2>
-                <p>Re: {replyModal.propertyTitle}</p>
-              </div>
-              <button className="close-btn" onClick={() => setReplyModal(null)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <div className="reply-original-msg">
-                <strong>Original message</strong>
-                <p>{replyModal.text}</p>
-              </div>
-              <label className="modal-label">Your Reply</label>
-              <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} rows={5} placeholder="Type your reply…" disabled={replying} />
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setReplyModal(null)}>Cancel</button>
-              <button className="btn-send" onClick={handleSendReply} disabled={replying || !replyText.trim()}>
-                {replying ? "Sending…" : "Send Reply"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════
           DELETE CONFIRM MODAL
       ════════════════════════════════════════ */}
       {deleteConfirm !== null && (
@@ -713,6 +812,64 @@ function AdminDashboard() {
             <div className="modal-footer">
               <button className="btn-cancel" onClick={() => setDeleteConfirm(null)}>Cancel</button>
               <button className="btn-delete-confirm" onClick={() => handleDelete(deleteConfirm)}>
+                🗑 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ════════════════════════════════════════
+          PERMIT FULL-IMAGE MODAL
+      ════════════════════════════════════════ */}
+      {permitModal && (
+        <div className="modal-overlay" onClick={() => setPermitModal(null)}>
+          <div className="modal-content permit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>Business Permit</h2>
+                <p>{permitModal.fullName} — {permitModal.email}</p>
+              </div>
+              <button className="close-btn" onClick={() => setPermitModal(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ textAlign: "center", padding: "16px" }}>
+              <img
+                src={permitModal.businessPermitImage}
+                alt="Business permit"
+                style={{ maxWidth: "100%", maxHeight: "60vh", objectFit: "contain", borderRadius: "8px" }}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setPermitModal(null)}>Close</button>
+              <button className="bca-btn approve" onClick={() => { handleOwnerRequest(permitModal.id, "active"); setPermitModal(null); }}>✓ Approve</button>
+              <button className="bca-btn reject"  onClick={() => { handleOwnerRequest(permitModal.id, "rejected"); setPermitModal(null); }}>✕ Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════
+          DELETE USER CONFIRM MODAL
+      ════════════════════════════════════════ */}
+      {userDeleteConfirm !== null && (
+        <div className="modal-overlay" onClick={() => setUserDeleteConfirm(null)}>
+          <div className="modal-content delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>Delete Account?</h2>
+                <p>This action cannot be undone.</p>
+              </div>
+              <button className="close-btn" onClick={() => setUserDeleteConfirm(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: "15px", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+                Are you sure you want to permanently delete the account for{" "}
+                <strong>{userDeleteConfirm.fullName}</strong> ({userDeleteConfirm.email})?
+                All their data including bookings and messages may be affected.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setUserDeleteConfirm(null)}>Cancel</button>
+              <button className="btn-delete-confirm" onClick={() => handleDeleteUser(userDeleteConfirm.id)}>
                 🗑 Yes, Delete
               </button>
             </div>

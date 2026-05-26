@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public class PropertyDTO {
     private Long id;
     private Long ownerId;
+    private String ownerName;
     private String title;
     private String description;
     private BigDecimal price;

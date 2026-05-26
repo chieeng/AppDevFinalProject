@@ -350,3 +350,9 @@
     font-size: 14px;
   }
 }
+
+/* ================= DARK MODE ================= */
+[data-theme="dark"] .form-label { color: var(--color-text-primary); }
+[data-theme="dark"] .inquiry-form h3 { color: var(--color-text-primary); }
+[data-theme="dark"] .booking-form h3,
+[data-theme="dark"] .booking-form label { color: var(--color-text-primary); }

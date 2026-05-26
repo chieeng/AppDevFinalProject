@@ -251,3 +251,11 @@
   .quick-actions { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ================= DARK MODE ================= */
+[data-theme="dark"] .dashboard-page { background: var(--color-light); }
+[data-theme="dark"] .dash-stat { background: var(--color-surface); }
+[data-theme="dark"] .dashboard-info { background: var(--color-surface); }
+[data-theme="dark"] .quick-actions-section { background: var(--color-surface); }
+[data-theme="dark"] .sidebar { background: var(--color-surface); border-color: var(--color-border); }
+[data-theme="dark"] .sidebar a { color: var(--color-text-secondary); }
+

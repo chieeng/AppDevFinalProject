@@ -1,59 +1,92 @@
 .featured {
-  padding: 80px 0;
+  padding: 120px 0 80px;
   background: var(--color-white);
 }
 
+/* ── Stats: floating cards that bridge hero → content ── */
 .stats-section {
-  background: var(--gradient-primary);
-  padding: 64px 0;
+  margin-top: -68px;
+  padding: 0 0 0;
   position: relative;
-  overflow: hidden;
-}
-
-.stats-section::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -10%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
+  z-index: 5;
+  background: transparent;
+  pointer-events: none; /* let hero clicks through the gap */
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 32px;
-  position: relative;
-  z-index: 1;
+  gap: 20px;
+  pointer-events: auto;
 }
 
-.stat-item {
+.stat-card {
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 28px 18px 24px;
   text-align: center;
-  color: white;
-  animation: fadeInUp 0.6s ease-out both;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow:
+    0 4px 6px rgba(0,0,0,0.04),
+    0 12px 32px rgba(0,0,0,0.10),
+    0 28px 64px rgba(0,0,0,0.08);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+  animation: fadeInUp 0.55s ease-out both;
+  cursor: default;
+  border: 1px solid rgba(255,255,255,0.9);
 }
 
-.stat-item:nth-child(2) { animation-delay: 0.08s; }
-.stat-item:nth-child(3) { animation-delay: 0.16s; }
-.stat-item:nth-child(4) { animation-delay: 0.24s; }
+.stat-card:nth-child(2) { animation-delay: 0.07s; }
+.stat-card:nth-child(3) { animation-delay: 0.14s; }
+.stat-card:nth-child(4) { animation-delay: 0.21s; }
 
-.stat-item h3 {
-  font-size: 40px;
+.stat-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow:
+    0 8px 12px rgba(0,0,0,0.05),
+    0 24px 48px rgba(15,164,146,0.16),
+    0 48px 80px rgba(0,0,0,0.09);
+}
+
+.stat-icon-wrap {
+  width: 54px;
+  height: 54px;
+  background: var(--gradient-primary);
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 22px rgba(15,164,146,0.38);
+  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease;
+  flex-shrink: 0;
+}
+
+.stat-card:hover .stat-icon-wrap {
+  transform: rotate(-8deg) scale(1.12);
+  box-shadow: 0 12px 32px rgba(15,164,146,0.55);
+}
+
+.stat-number {
+  font-size: 46px;
   font-weight: 800;
-  margin-bottom: 6px;
-  letter-spacing: -1px;
-  line-height: 1.1;
-  color: white;
+  color: var(--color-text-primary);
+  letter-spacing: -2.5px;
+  line-height: 1;
+  margin-bottom: 7px;
+  display: block;
 }
 
-.stat-item p {
-  font-size: 14px;
-  opacity: 0.88;
-  font-weight: 500;
-  color: white;
+.stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  display: block;
 }
 
 .how-it-works {
@@ -203,13 +236,21 @@
 }
 
 @media (max-width: 900px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .stats-section { margin-top: -48px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .featured { padding: 100px 0 64px; }
   .steps-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 480px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
-  .stat-item h3 { font-size: 30px; }
+  .stats-section { margin-top: -32px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-card { padding: 22px 12px 18px; border-radius: 16px; }
+  .stat-number { font-size: 34px; letter-spacing: -1.5px; }
+  .stat-icon-wrap { width: 44px; height: 44px; font-size: 20px; border-radius: 12px; }
+  .featured { padding: 80px 0 56px; }
   .cta-section h2 { font-size: 30px; }
   .steps-grid { grid-template-columns: 1fr; }
 }
+
+[data-theme="dark"] .stat-card { background: var(--color-surface); border-color: var(--color-border); }

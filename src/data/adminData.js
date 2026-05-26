@@ -7,6 +7,11 @@
 
 const API = "http://localhost:8000/api";
 
+// Strip featuredImage before writing any property to localStorage.
+// Base64 images are several MB each and quickly exhaust the 5-10 MB quota.
+// Images stay in React state / memory; localStorage is for metadata only.
+const stripImg = (p) => ({ ...p, featuredImage: null });
+
 // ── internal helpers ─────────────────────────
 const tryFetch = async (url, opts = {}) => {
   const res = await fetch(url, {
@@ -319,12 +324,10 @@ export async function getAdminListings() {
       price:          Number(p.price) || 0,
       approvalStatus: p.approvalStatus || "approved",
     }));
-    lsSet("vs_admin_listings", normalized);
+    lsSet("vs_admin_listings", normalized.map(stripImg)); // no images in cache
     return normalized;
   } catch (err) {
     console.warn("getAdminListings backend error:", err.message);
-    // Merge vs_admin_listings with vs_properties so owner-submitted listings
-    // (which are written to vs_properties by addOwnerListing) are never missed
     const adminCache = lsGet("vs_admin_listings");
     const propsCache = lsGet("vs_properties");
     const adminIds = new Set(adminCache.map((l) => Number(l.id)));
@@ -389,14 +392,12 @@ export async function addListing(listing) {
 
     const normalized = { ...data, price: Number(data.price) || 0 };
 
-    // Update admin's own listing cache
+    // Strip images from cache to avoid localStorage quota exceeded errors
     const cache = JSON.parse(localStorage.getItem("vs_admin_listings") || "[]");
-    localStorage.setItem("vs_admin_listings", JSON.stringify([...cache, normalized]));
+    localStorage.setItem("vs_admin_listings", JSON.stringify([...cache.map(stripImg), stripImg(normalized)]));
 
-    // CRITICAL: Also refresh the main vs_properties cache that getAllListings() reads.
-    // Without this, Browse/Search/Home won't show the new listing until page refresh.
     const propsCache = JSON.parse(localStorage.getItem("vs_properties") || "[]");
-    localStorage.setItem("vs_properties", JSON.stringify([...propsCache, normalized]));
+    localStorage.setItem("vs_properties", JSON.stringify([...propsCache.map(stripImg), stripImg(normalized)]));
 
     return normalized;
 
@@ -418,11 +419,13 @@ export async function updateListing(id, listing) {
     });
   } catch (err) { console.warn("updateListing:", err.message); }
 
-  // Update BOTH caches so Browse/Search/Home reflect the change immediately
+  // Update BOTH caches (strip images to stay within localStorage quota)
   const updateBoth = (key) => {
     const c = JSON.parse(localStorage.getItem(key) || "[]");
     localStorage.setItem(key, JSON.stringify(
-      c.map((l) => Number(l.id) === Number(id) ? { ...l, ...listing, price: Number(listing.price)||0 } : l)
+      c.map((l) => Number(l.id) === Number(id)
+        ? stripImg({ ...l, ...listing, price: Number(listing.price) || 0 })
+        : l)
     ));
   };
   updateBoth("vs_admin_listings");
@@ -504,8 +507,8 @@ export async function getOwnerListings(ownerId) {
     const data = await tryFetch(`${API}/properties/owner/${ownerId}`);
     const list = Array.isArray(data) ? data : (data.content || []);
     const normalized = list.map((p) => ({ ...p, price: Number(p.price) || 0 }));
-    lsSet("vs_owner_listings", normalized);
-    return normalized;
+    lsSet("vs_owner_listings", normalized.map(stripImg)); // no images in cache
+    return normalized; // return with images for display
   } catch (err) {
     console.warn("getOwnerListings error:", err.message);
     return lsGet("vs_owner_listings").filter((l) => String(l.ownerId) === String(ownerId));
@@ -538,50 +541,70 @@ export async function getOwnerInquiries(ownerId) {
 
 // Owner adds a listing — same as admin but scoped to their own userId
 export async function addOwnerListing(listing, ownerId) {
+  if (!ownerId || isNaN(ownerId)) {
+    throw new Error("Session expired — please log out and log in again.");
+  }
+
   const payload = {
     title:          listing.title,
     description:    listing.description || "",
     price:          parseFloat(listing.price) || 0,
     propertyType:   listing.propertyType || "Boarding House",
     status:         listing.status || "available",
-    approvalStatus: "pending",  // must be approved by admin before going public
-    location:     listing.location || "",
-    city:         listing.city || "",
-    state:        listing.state || "",
-    country:      "Philippines",
-    bedrooms:     parseInt(listing.bedrooms)  || 1,
-    bathrooms:    parseInt(listing.bathrooms) || 1,
-    areaSqft:     listing.areaSqft  ? parseFloat(listing.areaSqft)  : null,
-    yearBuilt:    listing.yearBuilt ? parseInt(listing.yearBuilt)   : null,
-    hasParking:   !!listing.hasParking,
-    hasGym:       !!listing.hasGym,
-    hasPool:      !!listing.hasPool,
-    hasGarden:    !!listing.hasGarden,
-    hasBalcony:   !!listing.hasBalcony,
-    hasWifi:      !!listing.hasWifi,
-    hasMeals:     !!listing.hasMeals,
-    petFriendly:  !!listing.petFriendly,
-    featuredImage: listing.featuredImage || null,
+    approvalStatus: "pending",
+    location:       listing.location || "",
+    city:           listing.city || "",
+    state:          listing.state || "",
+    country:        "Philippines",
+    bedrooms:       parseInt(listing.bedrooms)  || 1,
+    bathrooms:      parseInt(listing.bathrooms) || 1,
+    areaSqft:       listing.areaSqft  ? parseFloat(listing.areaSqft)  : null,
+    yearBuilt:      listing.yearBuilt ? parseInt(listing.yearBuilt)   : null,
+    hasParking:     !!listing.hasParking,
+    hasGym:         !!listing.hasGym,
+    hasPool:        !!listing.hasPool,
+    hasGarden:      !!listing.hasGarden,
+    hasBalcony:     !!listing.hasBalcony,
+    hasWifi:        !!listing.hasWifi,
+    hasMeals:       !!listing.hasMeals,
+    petFriendly:    !!listing.petFriendly,
+    featuredImage:  listing.featuredImage || null,
     ownerId,
   };
 
-  const res = await fetch(`${API}/properties`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || `Server error ${res.status}`);
+  let res;
+  try {
+    res = await fetch(`${API}/properties`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+  } catch (networkErr) {
+    throw new Error("Cannot reach the server. Make sure the backend is running on port 8000.");
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Server returned an unreadable response (HTTP ${res.status}). The image may be too large.`);
+  }
+
+  if (!res.ok) {
+    throw new Error(data.message || `Server error ${res.status}`);
+  }
+
   const normalized = { ...data, price: Number(data.price) || 0 };
 
-  // Keep all three caches in sync so admin can see new listings immediately
+  // Strip images from ALL cache writes to stay within localStorage quota.
+  // React state (setListings) keeps the full object including featuredImage.
   const ownerCache = lsGet("vs_owner_listings");
-  lsSet("vs_owner_listings", [...ownerCache, normalized]);
+  lsSet("vs_owner_listings", [...ownerCache.map(stripImg), stripImg(normalized)]);
   const propsCache = lsGet("vs_properties");
-  lsSet("vs_properties", [...propsCache, normalized]);
+  lsSet("vs_properties",     [...propsCache.map(stripImg), stripImg(normalized)]);
   const adminCache = lsGet("vs_admin_listings");
-  lsSet("vs_admin_listings", [...adminCache, normalized]);
-  return normalized;
+  lsSet("vs_admin_listings", [...adminCache.map(stripImg), stripImg(normalized)]);
+  return normalized; // return full object (with image) so React state can display it
 }
 
 // Owner updates their own listing — passes requesterId for ownership validation
@@ -601,7 +624,9 @@ export async function updateOwnerListing(id, listing, ownerId) {
   const updateCache = (key) => {
     const c = lsGet(key);
     lsSet(key, c.map((l) =>
-      Number(l.id) === Number(id) ? { ...l, ...listing, price: Number(listing.price) || 0 } : l
+      Number(l.id) === Number(id)
+        ? stripImg({ ...l, ...listing, price: Number(listing.price) || 0 })
+        : l
     ));
   };
   updateCache("vs_owner_listings");

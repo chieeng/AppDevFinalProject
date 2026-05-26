@@ -118,9 +118,7 @@ function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin, isOwner }) {
         <ul className="nav-links">
           <li><Link to="/"        className={isActive("/")}>Home</Link></li>
           <li><Link to="/browse"  className={isActive("/browse")}>Browse</Link></li>
-          <li><Link to="/search"  className={isActive("/search")}>Search</Link></li>
           <li><Link to="/about"   className={isActive("/about")}>About</Link></li>
-          <li><Link to="/contact" className={isActive("/contact")}>Contact</Link></li>
         </ul>
 
         <div className="auth-buttons">
@@ -155,8 +153,6 @@ function Navbar({ isLoggedIn, setIsLoggedIn, isAdmin, isOwner }) {
                     <hr />
                     <Link to="/profile"   onClick={() => setDropdown(false)}>👤 My Profile</Link>
                     <Link to="/dashboard" onClick={() => setDropdown(false)}>📊 Dashboard</Link>
-                    <Link to="/messages"  onClick={() => setDropdown(false)}>💬 My Messages</Link>
-                    <Link to="/saved"     onClick={() => setDropdown(false)}>❤️ Saved Listings</Link>
                     <hr />
                     <button onClick={handleLogout}>🚪 Logout</button>
                   </div>

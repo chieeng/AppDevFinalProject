@@ -55,16 +55,19 @@ function Browse() {
   const publicListings = isAdmin ? allListings : allListings.filter((p) => (p.approvalStatus || "approved") === "approved");
 
   let results = visibleListings.filter((item) => {
-    const q = searchTerm.toLowerCase();
-    const matchesSearch =
-      item.title.toLowerCase().includes(q) ||
-      (item.city || item.location || "").toLowerCase().includes(q) ||
-      (item.state || "").toLowerCase().includes(q);
-    const matchesMin    = !minPrice || (item.price || 0) >= Number(minPrice);
-    const matchesMax    = !maxPrice || (item.price || 0) <= Number(maxPrice);
-    const matchesType   = !filterType || item.propertyType === filterType;
-    const matchesBeds   = !filterBedrooms || Number(item.bedrooms) >= parseInt(filterBedrooms);
-    const matchesAmenity = !filterAmenity || !!item[filterAmenity];
+    const q = searchTerm.trim().toLowerCase();
+    const matchesSearch = !q ||
+      (item.title        || "").toLowerCase().includes(q) ||
+      (item.city         || "").toLowerCase().includes(q) ||
+      (item.location     || "").toLowerCase().includes(q) ||
+      (item.state        || "").toLowerCase().includes(q) ||
+      (item.description  || "").toLowerCase().includes(q) ||
+      (item.propertyType || "").toLowerCase().includes(q);
+    const matchesMin     = !minPrice    || (item.price    || 0) >= Number(minPrice);
+    const matchesMax     = !maxPrice    || (item.price    || 0) <= Number(maxPrice);
+    const matchesType    = !filterType  || (item.propertyType || "").toLowerCase() === filterType.toLowerCase();
+    const matchesBeds    = !filterBedrooms || Number(item.bedrooms || 0) >= Number(filterBedrooms);
+    const matchesAmenity = !filterAmenity  || !!item[filterAmenity];
     return matchesSearch && matchesMin && matchesMax && matchesType && matchesBeds && matchesAmenity;
   });
 
@@ -233,6 +236,7 @@ function Browse() {
                   status={item.status}
                   featuredImage={item.featuredImage}
                   approvalStatus={isAdmin ? item.approvalStatus : undefined}
+                  ownerName={item.ownerName}
                 />
               ))}
             </div>

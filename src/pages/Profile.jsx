@@ -137,7 +137,7 @@ function Profile() {
               </div>
               <span className="pli-arrow">→</span>
             </Link>
-            <Link to="/saved" className="profile-link-item">
+            <Link to="/dashboard" className="profile-link-item">
               <span>❤️</span>
               <div>
                 <strong>Saved Properties</strong>
@@ -145,14 +145,14 @@ function Profile() {
               </div>
               <span className="pli-arrow">→</span>
             </Link>
-            <Link to="/messages" className="profile-link-item">
+            <button className="profile-link-item" style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left" }} onClick={() => window.dispatchEvent(new CustomEvent("open-chatbox"))}>
               <span>💬</span>
               <div>
                 <strong>My Messages</strong>
                 <p>View sent inquiries & replies</p>
               </div>
               <span className="pli-arrow">→</span>
-            </Link>
+            </button>
           </div>
 
         </div>

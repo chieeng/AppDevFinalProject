@@ -1,7 +1,24 @@
-import cover2 from "../images/cover-2.png";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import cover2 from "../images/cover-2.png";
+import { getAllListings, loadPropertiesFromBackend } from "../data/appData";
 
 function About() {
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    loadPropertiesFromBackend().then(() => {
+      setListings(getAllListings().filter((p) => (p.approvalStatus || "approved") === "approved"));
+      setLoading(false);
+    });
+  }, []);
+
+  const totalListings = listings.length;
+  const availableNow  = listings.filter((p) => p.status === "available").length;
+  const citiesCovered = new Set(listings.map((p) => p.city).filter(Boolean)).size;
+  const ownerCount    = new Set(listings.map((p) => p.ownerId).filter(Boolean)).size;
+
   const values = [
     { icon: "🔒", title: "Verified Listings", desc: "Every property is manually reviewed so you can trust what you see." },
     { icon: "💬", title: "Direct Communication", desc: "Message owners directly — no middlemen, no delays, no hidden fees." },
@@ -10,8 +27,9 @@ function About() {
   ];
 
   const team = [
-    { name: "Jian Brenz C. Becera", role: "Lead Developer", emoji: "👨‍💻" },
-    { name: "VacanSee Team", role: "Product and Design", emoji: "🎨" },
+    { name: "Jian Brenz C. Becera",      role: "Lead Developer",    emoji: "👨‍💻" },
+    { name: "Ritchie Jay Donasco Erag",   role: "UI/UX Designer",    emoji: "🎨" },
+    { name: "Alex Cortes",                role: "Quality Assurance", emoji: "🧪" },
   ];
 
   return (
@@ -38,10 +56,10 @@ function About() {
             <Link to="/browse" className="about-cta-btn">Browse Listings</Link>
           </div>
           <div className="about-stats-column">
-            <div className="about-stat"><h3>1,200+</h3><p>Happy Tenants</p></div>
-            <div className="about-stat"><h3>500+</h3><p>Properties Listed</p></div>
-            <div className="about-stat"><h3>50+</h3><p>Cities Covered</p></div>
-            <div className="about-stat"><h3>4.9★</h3><p>Average Rating</p></div>
+            <div className="about-stat"><h3>{loading ? "—" : totalListings}</h3><p>Properties Listed</p></div>
+            <div className="about-stat"><h3>{loading ? "—" : availableNow}</h3><p>Available Now</p></div>
+            <div className="about-stat"><h3>{loading ? "—" : citiesCovered}</h3><p>Cities Covered</p></div>
+            <div className="about-stat"><h3>{loading ? "—" : ownerCount}</h3><p>Property Owners</p></div>
           </div>
         </div>
       </section>

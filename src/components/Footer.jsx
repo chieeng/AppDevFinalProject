@@ -25,19 +25,20 @@ function Footer() {
           <h4>Explore</h4>
           <Link to="/">Home</Link>
           <Link to="/browse">Browse Listings</Link>
-          <Link to="/search">Search</Link>
           <Link to="/about">About Us</Link>
-          <Link to="/contact">Contact</Link>
         </div>
 
         {/* ACCOUNT LINKS */}
         <div className="footer-col">
           <h4>Account</h4>
-          <Link to="/login">Log In</Link>
-          <Link to="/register">Sign Up</Link>
+          {localStorage.getItem("isLoggedIn") !== "true" && (
+            <>
+              <Link to="/login">Log In</Link>
+              <Link to="/register">Sign Up</Link>
+            </>
+          )}
           <Link to="/dashboard">Dashboard</Link>
           <Link to="/profile">My Profile</Link>
-          <Link to="/saved">Saved Listings</Link>
         </div>
 
         {/* CONTACT INFO */}
@@ -55,11 +56,6 @@ function Footer() {
       <div className="footer-bottom">
         <div className="container">
           <p>© {currentYear} VacanSee. All rights reserved.</p>
-          <div className="footer-bottom-links">
-            <Link to="/contact" className="footer-link-placeholder">Privacy Policy</Link>
-            <Link to="/contact" className="footer-link-placeholder">Terms of Service</Link>
-            <Link to="/contact" className="footer-link-placeholder">Help Center</Link>
-          </div>
         </div>
       </div>
 

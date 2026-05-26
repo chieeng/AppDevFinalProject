@@ -49,7 +49,7 @@ function Dashboard() {
   };
 
   const stats = [
-    { icon: "📋", label: "My Bookings",     value: bookings.length },
+    { icon: "📋", label: "My Bookings",     value: bookings.filter((b) => b.status !== "rejected" && b.status !== "cancelled").length },
     { icon: "⏳", label: "Pending",          value: bookings.filter((b) => b.status === "pending").length },
     { icon: "✅", label: "Confirmed",         value: bookings.filter((b) => b.status === "confirmed").length },
     { icon: "❤️", label: "Saved Properties", value: savedIds.length },
@@ -66,8 +66,7 @@ function Dashboard() {
               <p>Here is a summary of your activity on VacanSee</p>
             </div>
             <div className="dash-welcome-actions">
-              <Link to="/search" className="dash-action-btn primary">🔍 Find a Room</Link>
-              <Link to="/saved"  className="dash-action-btn outline">❤️ Saved ({savedIds.length})</Link>
+              <Link to="/browse" className="dash-action-btn primary">🔍 Find a Room</Link>
             </div>
           </div>
         </div>
@@ -151,7 +150,6 @@ function Dashboard() {
           <div className="dash-section">
             <div className="dash-section-header">
               <h2>❤️ Saved Properties</h2>
-              <Link to="/saved" className="dash-section-link">View All →</Link>
             </div>
             <div className="cards">
               {savedListings.map((p) => (
@@ -165,6 +163,7 @@ function Dashboard() {
                   bathrooms={p.bathrooms}
                   propertyType={p.propertyType}
                   status={p.status}
+                  ownerName={p.ownerName}
                 />
               ))}
             </div>
@@ -175,10 +174,8 @@ function Dashboard() {
           <div className="dash-section-header"><h2>Quick Links</h2></div>
           <div className="quick-actions">
             {[
-              { icon: "🔍", label: "Search Properties", link: "/search" },
-              { icon: "🏠", label: "Browse All",        link: "/browse" },
-              { icon: "💬", label: "My Messages",       link: "/messages" },
-              { icon: "👤", label: "My Profile",        link: "/profile" },
+              { icon: "🏠", label: "Browse All",  link: "/browse"  },
+              { icon: "👤", label: "My Profile",  link: "/profile" },
             ].map((a, i) => (
               <Link key={i} to={a.link} className="quick-action-btn">
                 <span className="action-icon">{a.icon}</span>

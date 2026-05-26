@@ -1,18 +1,13 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getListingById, getAllListings } from "../data/appData";
-import { addBooking, addMessage, toggleSaved, getSavedIds, getBookingsByUser } from "../data/adminData";
+import { addBooking, toggleSaved, getSavedIds, getBookingsByUser } from "../data/adminData";
 import listing1 from "../images/listing-1.jpg";
 import listing2 from "../images/listing-2.jpg";
 import listing3 from "../images/listing-3.png";
 
-// Step states for the booking form:
-//   "form"     — user fills in date and months
-//   "message"  — booking done, optionally add a message to the owner
-//   "done"     — message sent (or skipped), redirecting
 const STEP_FORM    = "form";
 const STEP_MESSAGE = "message";
-const STEP_DONE    = "done";
 
 function ListingDetails({ isLoggedIn }) {
   const { id }     = useParams();
@@ -27,10 +22,6 @@ function ListingDetails({ isLoggedIn }) {
   // Step state controls which view the right-side panel shows
   const [step, setStep] = useState(STEP_FORM);
 
-  // Message state (shown after booking is confirmed)
-  const [messageText, setMessageText]       = useState("");
-  const [messageLoading, setMessageLoading] = useState(false);
-  const [messageError, setMessageError]     = useState("");
 
   // Property + save state
   const [data, setData]     = useState(null);
@@ -43,6 +34,7 @@ function ListingDetails({ isLoggedIn }) {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [hasApprovedBooking, setHasApprovedBooking] = useState(false);
   const currentUserId   = localStorage.getItem("userId");
   const currentUserName = localStorage.getItem("userFullName");
 
@@ -56,7 +48,18 @@ function ListingDetails({ isLoggedIn }) {
       .then(r => r.ok ? r.json() : [])
       .then(data => setReviews(Array.isArray(data) ? data : []))
       .catch(() => {});
-  }, [id]);
+    // Check if the current user has a confirmed booking for this property
+    if (currentUserId) {
+      getBookingsByUser(currentUserId)
+        .then((bookings) => {
+          const approved = bookings.some(
+            (b) => String(b.propertyId) === String(id) && b.status === "confirmed"
+          );
+          setHasApprovedBooking(approved);
+        })
+        .catch(() => {});
+    }
+  }, [id, currentUserId]);
 
   const toggleSave_ = () => {
     const updated = toggleSaved(parseInt(id));
@@ -102,6 +105,28 @@ function ListingDetails({ isLoggedIn }) {
 
     setBookingLoading(true);
     setBookingError("");
+
+    // ── Duplicate check: block if the tenant already has an active booking
+    //    (pending or confirmed) for this exact listing.
+    try {
+      const allBookings = await getBookingsByUser(currentUserId);
+      const duplicate = allBookings.find(
+        (b) =>
+          String(b.propertyId) === String(data.id) &&
+          (b.status === "pending" || b.status === "confirmed")
+      );
+      if (duplicate) {
+        setBookingError(
+          duplicate.status === "pending"
+            ? "You already have a pending booking for this property. Please wait for the owner's decision."
+            : "You already have an active confirmed booking for this property."
+        );
+        setBookingLoading(false);
+        return;
+      }
+    } catch {
+      // If we can't fetch bookings, let the server enforce the rule
+    }
 
     // ── Conflict check: block if the tenant already has a confirmed booking
     //    whose date range overlaps with the requested dates.
@@ -159,36 +184,6 @@ function ListingDetails({ isLoggedIn }) {
     }
   };
 
-  // ── STEP 2a: User sends a message then we redirect ───────────
-  const handleSendMessage = async () => {
-    if (!messageText.trim()) return;
-
-    setMessageLoading(true);
-    setMessageError("");
-
-    try {
-      await addMessage({
-        from:          currentUserId,
-        fromName:      currentUserName || "User",
-        fromEmail:     localStorage.getItem("userEmail") || "",
-        propertyId:    data.id,
-        propertyTitle: data.title,
-        text:          messageText.trim(),
-      });
-      setStep(STEP_DONE);
-      setTimeout(() => navigate("/dashboard"), 1800);
-    } catch (err) {
-      setMessageError(err.message || "Failed to send message.");
-    } finally {
-      setMessageLoading(false);
-    }
-  };
-
-  // ── STEP 2b: User skips the message and goes to dashboard ─────
-  const handleSkip = () => {
-    setStep(STEP_DONE);
-    setTimeout(() => navigate("/dashboard"), 1200);
-  };
 
   // ── Loading / not found state ─────────────────────────────────
   if (!data) {
@@ -203,7 +198,7 @@ function ListingDetails({ isLoggedIn }) {
   }
 
   const images = [listing1, listing2, listing3];
-  const hero   = images[parseInt(String(data.id).slice(-1)) % images.length];
+  const hero   = data.featuredImage || images[parseInt(String(data.id).slice(-1)) % images.length];
   const total  = (data.price || 0) * months;
 
   const features = [];
@@ -245,6 +240,9 @@ function ListingDetails({ isLoggedIn }) {
               </div>
               <h1 className="title">{data.title}</h1>
               <p className="location">📍 {data.location}, {data.city}</p>
+              {data.ownerName && (
+                <p className="listing-owner-name">🏠 Listed by <strong>{data.ownerName}</strong></p>
+              )}
             </div>
             <div className="price-box">
               <h2>₱{(data.price || 0).toLocaleString()}</h2>
@@ -329,7 +327,12 @@ function ListingDetails({ isLoggedIn }) {
             </div>
 
             {/* Write a review */}
-            {isLoggedIn && (
+            {isLoggedIn && !hasApprovedBooking && (
+              <p style={{ fontSize: "13px", color: "var(--color-text-muted)", marginTop: "12px" }}>
+                You can only leave a review after your booking has been approved.
+              </p>
+            )}
+            {isLoggedIn && hasApprovedBooking && (
               <div className="review-form">
                 <h4>Write a Review</h4>
                 <div className="review-rating-pick">
@@ -369,108 +372,92 @@ function ListingDetails({ isLoggedIn }) {
         <div className="listing-right">
           <div className="booking-form">
 
-            {/* ── STEP: form ────────────────────────────────── */}
-            {step === STEP_FORM && (
-              <>
-                <h3>Book This Property</h3>
-
-                <label>Move-in Date</label>
-                <input
-                  type="date"
-                  value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                />
-
-                <label>Number of Months</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="24"
-                  value={months}
-                  onChange={(e) => setMonths(Number(e.target.value))}
-                />
-
-                <div className="total">
-                  Total: <strong>₱{total.toLocaleString()}</strong>
-                  <span style={{ fontSize: "13px", color: "var(--color-text-muted)", marginLeft: "6px" }}>
-                    ({months} mo × ₱{(data.price || 0).toLocaleString()})
-                  </span>
-                </div>
-
-                {bookingError && (
-                  <div className="error-message" style={{ marginTop: "10px" }}>
-                    ❌ {bookingError}
-                  </div>
-                )}
-
-                <button
-                  className="btn-continue"
-                  onClick={handleBooking}
-                  disabled={bookingLoading}
-                  style={{ marginTop: "16px" }}
-                >
-                  {bookingLoading ? "Submitting..." : "📅 Confirm Booking"}
-                </button>
-              </>
-            )}
-
-            {/* ── STEP: message (after booking) ─────────────── */}
-            {step === STEP_MESSAGE && (
-              <>
-                {/* Success banner */}
-                <div className="booking-success" style={{ marginBottom: "20px" }}>
-                  ✅ Booking submitted successfully!
-                </div>
-
-                <h3 style={{ marginBottom: "6px" }}>Message the Owner</h3>
-                <p style={{ fontSize: "14px", color: "var(--color-text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
-                  Want to introduce yourself or ask a question? Add a message to your booking request. You can also skip this.
-                </p>
-
-                <textarea
-                  className="booking-message-textarea"
-                  rows={4}
-                  placeholder="Hi! I booked your property. My preferred move-in date is... I would like to ask about..."
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  disabled={messageLoading}
-                />
-
-                {messageError && (
-                  <div className="error-message" style={{ marginTop: "8px" }}>
-                    ❌ {messageError}
-                  </div>
-                )}
-
-                <div className="booking-message-actions">
-                  <button
-                    className="btn-continue"
-                    onClick={handleSendMessage}
-                    disabled={messageLoading || !messageText.trim()}
-                  >
-                    {messageLoading ? "Sending..." : "💬 Send Message"}
-                  </button>
-                  <button
-                    className="btn-skip"
-                    onClick={handleSkip}
-                    disabled={messageLoading}
-                  >
-                    Skip → Go to Dashboard
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* ── STEP: done ─────────────────────────────────── */}
-            {step === STEP_DONE && (
-              <div className="booking-success" style={{ textAlign: "center", padding: "32px 16px" }}>
-                <div style={{ fontSize: "40px", marginBottom: "12px" }}>🎉</div>
-                <h3 style={{ marginBottom: "8px", color: "var(--color-text-primary)" }}>All Done!</h3>
-                <p style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>
-                  Redirecting you to your dashboard...
-                </p>
+            {/* ── Owner cannot book their own listing ───────── */}
+            {isLoggedIn && data.ownerId && Number(currentUserId) === Number(data.ownerId) ? (
+              <div className="own-listing-notice">
+                <span className="oln-icon">🏠</span>
+                <p>This is your listing. You cannot book your own property.</p>
               </div>
+            ) : (
+              <>
+                {/* ── STEP: form ────────────────────────────── */}
+                {step === STEP_FORM && (
+                  <>
+                    <h3>Book This Property</h3>
+
+                    <label>Move-in Date</label>
+                    <input
+                      type="date"
+                      value={checkIn}
+                      onChange={(e) => setCheckIn(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+
+                    <label>Number of Months</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="24"
+                      value={months}
+                      onChange={(e) => setMonths(Number(e.target.value))}
+                    />
+
+                    <div className="total">
+                      Total: <strong>₱{total.toLocaleString()}</strong>
+                      <span style={{ fontSize: "13px", color: "var(--color-text-muted)", marginLeft: "6px" }}>
+                        ({months} mo × ₱{(data.price || 0).toLocaleString()})
+                      </span>
+                    </div>
+
+                    {bookingError && (
+                      <div className="error-message" style={{ marginTop: "10px" }}>
+                        ❌ {bookingError}
+                      </div>
+                    )}
+
+                    <button
+                      className="btn-continue"
+                      onClick={handleBooking}
+                      disabled={bookingLoading}
+                      style={{ marginTop: "16px" }}
+                    >
+                      {bookingLoading ? "Submitting..." : "📅 Confirm Booking"}
+                    </button>
+                  </>
+                )}
+
+                {/* ── STEP: message (after booking) ─────────── */}
+                {step === STEP_MESSAGE && (
+                  <>
+                    <div className="booking-success" style={{ marginBottom: "20px" }}>
+                      ✅ Booking submitted successfully!
+                    </div>
+
+                    <h3 style={{ marginBottom: "6px" }}>Message the Owner?</h3>
+                    <p style={{ fontSize: "14px", color: "var(--color-text-muted)", marginBottom: "20px", lineHeight: 1.6 }}>
+                      Want to introduce yourself or ask a question? Open the chat to message the owner directly.
+                    </p>
+
+                    <div className="booking-message-actions">
+                      <button
+                        className="btn-continue"
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent("open-chatbox", {
+                            detail: { propertyId: data.id, propertyTitle: data.title },
+                          }));
+                          navigate("/dashboard");
+                        }}
+                      >
+                        💬 Message Owner
+                      </button>
+                      <button className="btn-skip" onClick={() => navigate("/dashboard")}>
+                        Skip → Go to Dashboard
+                      </button>
+                    </div>
+                  </>
+                )}
+
+              </>
             )}
 
           </div>

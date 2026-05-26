@@ -16,6 +16,8 @@ public class UserDTO {
     private String bio;
     private String profileImage;
     private String role;
+    private String accountStatus;
+    private String businessPermitImage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

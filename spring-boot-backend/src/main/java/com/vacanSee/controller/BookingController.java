@@ -71,6 +71,22 @@ public class BookingController {
         booking.setUser(user.get());
         booking.setStatus(booking.getStatus() != null ? booking.getStatus() : "pending");
 
+        // ── Block owner from booking their own listing ────────
+        if (property.get().getOwner().getId().equals(user.get().getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "You cannot book your own listing."));
+        }
+
+        // ── Block duplicate booking: same user, same property, pending or confirmed ──
+        boolean hasDuplicate = bookingRepository.findByUserId(booking.getUser().getId())
+                .stream()
+                .anyMatch(b -> b.getProperty().getId().equals(booking.getProperty().getId())
+                        && ("pending".equals(b.getStatus()) || "confirmed".equals(b.getStatus())));
+        if (hasDuplicate) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "You already have an active booking for this property."));
+        }
+
         // ── Conflict check: a tenant with an approved (confirmed) booking cannot
         //    book another property whose dates overlap with their active stay.
         if (booking.getCheckInDate() != null && booking.getCheckOutDate() != null) {

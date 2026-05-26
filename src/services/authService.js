@@ -4,13 +4,18 @@ const API = "http://localhost:8000/api";
 export const authService = {
 
   // POST /api/auth/register
-  // Body: { email, password, fullName, phone, role }
-  // Returns: { userId, email, fullName, role, message }
-  register: async ({ fullName, email, password, phone, role }) => {
+  // Body: { email, password, fullName, phone, role, businessPermitImage? }
+  // Returns: { userId, email, fullName, role, accountStatus, message }
+  register: async ({ fullName, email, password, phone, role, businessPermitImage }) => {
     const res = await fetch(`${API}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, fullName, phone: phone || "", role: role || "TENANT" }),
+      body: JSON.stringify({
+        email, password, fullName,
+        phone: phone || "",
+        role: role || "TENANT",
+        businessPermitImage: businessPermitImage || null,
+      }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Registration failed");

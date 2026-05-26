@@ -430,6 +430,71 @@
 }
 
 /* ================= CHATBOX — Conversation Widget ================= */
+.chat-toggle { position: relative; }
+.chat-toggle-badge {
+  position: absolute;
+  top: -4px; right: -4px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid white;
+  pointer-events: none;
+}
+.cti-property-tag {
+  font-size: 11px;
+  color: var(--color-primary, #0fa492);
+  font-weight: 600;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chatbox-property-banner {
+  padding: 8px 14px;
+  background: rgba(15,164,146,0.08);
+  border-bottom: 1px solid rgba(15,164,146,0.15);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary, #0fa492);
+  flex-shrink: 0;
+}
+.chatbox-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.12);
+}
+.chatbox-tab {
+  flex: 1;
+  padding: 9px 6px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.65);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.chatbox-tab.active { color: #fff; border-bottom-color: #fff; }
+.chatbox-tab:hover:not(.active) { color: rgba(255,255,255,0.85); }
+.chatbox-tab-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px; height: 16px;
+  border-radius: 999px;
+  padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+}
 .chat-toggle {
   position: fixed;
   bottom: 24px;
@@ -1580,7 +1645,7 @@
 
 .about-team { padding: 80px 0; }
 
-.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; max-width: 600px; }
+.team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 860px; margin: 0 auto; }
 
 .team-card {
   background: white;
@@ -1599,6 +1664,10 @@
 @media (max-width: 900px) {
   .about-mission { flex-direction: column; }
   .values-grid { grid-template-columns: 1fr 1fr; }
+  .team-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 540px) {
+  .team-grid { grid-template-columns: 1fr; }
 }
 
 /* ================================================
@@ -2396,6 +2465,17 @@
 [data-theme="dark"] .profile-link-item { border-color: #334155; }
 [data-theme="dark"] .toggle-slider { background: #334155; }
 [data-theme="dark"] body { background: #0f172a; }
+[data-theme="dark"] .meta-item { background: var(--color-surface); }
+[data-theme="dark"] .search-controls { background: var(--color-surface); }
+[data-theme="dark"] .sidebar-input:focus { background: var(--color-surface); }
+[data-theme="dark"] .view-toggle button.active { background: var(--color-surface); }
+[data-theme="dark"] .filter-tab { background: var(--color-surface); }
+[data-theme="dark"] .about-stat,
+[data-theme="dark"] .about-values { background: var(--color-surface); }
+[data-theme="dark"] .team-card { background: var(--color-surface); }
+[data-theme="dark"] .admin-page { background: var(--color-light); }
+[data-theme="dark"] .admin-empty { background: var(--color-surface); }
+[data-theme="dark"] .btn-message { background: var(--color-surface); }
 
 /* ================================================
    THEME TOGGLE BUTTON in Navbar
@@ -3423,3 +3503,114 @@
   .obc-right { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
 }
 [data-theme="dark"] .demo-hint-toggle:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* ════════════════════════════════════════════════
+   ADMIN — USERS TABLE
+════════════════════════════════════════════════ */
+.users-table-wrap { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.users-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.users-table thead tr { background: var(--color-light-bg); border-bottom: 2px solid var(--color-border); }
+.users-table th { padding: 12px 16px; text-align: left; font-weight: 700; color: var(--color-text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.users-table tbody tr { border-bottom: 1px solid var(--color-border); transition: background 0.15s; }
+.users-table tbody tr:last-child { border-bottom: none; }
+.users-table tbody tr:hover { background: var(--color-light-bg); }
+.users-table td { padding: 12px 16px; vertical-align: middle; }
+
+.ut-id { color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.ut-name { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; }
+.ut-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--color-primary), #0891b2); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.ut-email { color: var(--color-text-secondary); font-size: 13px; }
+.ut-role { white-space: nowrap; }
+.ut-role-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
+.ut-role-edit { display: flex; align-items: center; gap: 6px; }
+.ut-role-edit select { padding: 4px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-size: 13px; background: var(--color-bg); color: var(--color-text-primary); }
+.ut-joined { color: var(--color-text-muted); font-size: 13px; white-space: nowrap; }
+.ut-actions { display: flex; gap: 6px; white-space: nowrap; }
+
+.ut-btn { padding: 5px 10px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: opacity 0.15s; }
+.ut-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ut-btn.edit   { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.ut-btn.save   { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+.ut-btn.cancel { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+.ut-btn.delete { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.ut-btn:not(:disabled):hover { opacity: 0.8; }
+
+[data-theme="dark"] .users-table thead tr { background: #1e293b; }
+[data-theme="dark"] .users-table tbody tr:hover { background: #1e293b; }
+[data-theme="dark"] .users-table { color: #e2e8f0; }
+[data-theme="dark"] .ut-role-edit select { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+
+@media (max-width: 768px) {
+  .ut-email { display: none; }
+  .ut-joined { display: none; }
+  .ut-actions { flex-direction: column; }
+}
+
+/* ════════════════════════════════════════════════
+   REGISTER — BUSINESS PERMIT UPLOAD
+════════════════════════════════════════════════ */
+.permit-upload-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 2px dashed var(--color-border); border-radius: var(--radius-md); padding: 24px 16px; cursor: pointer; transition: border-color 0.2s, background 0.2s; text-align: center; }
+.permit-upload-zone:hover { border-color: var(--color-primary); background: rgba(15,164,146,0.04); }
+.permit-upload-icon { font-size: 32px; }
+.permit-upload-text { font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+.permit-upload-hint { font-size: 12px; color: var(--color-text-muted); }
+.permit-preview-wrap { position: relative; display: inline-block; width: 100%; }
+.permit-preview-img { width: 100%; max-height: 200px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-light-bg); }
+.permit-remove-btn { margin-top: 8px; padding: 5px 14px; border: 1px solid #fecaca; border-radius: var(--radius-sm); background: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 600; cursor: pointer; }
+.permit-remove-btn:hover { opacity: 0.8; }
+
+/* ── Pending approval screen ── */
+.owner-pending-card { background: var(--color-light-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 20px; margin: 12px 0; text-align: left; }
+.owner-pending-card p { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 12px; }
+.owner-pending-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.owner-pending-steps li { font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+
+/* ════════════════════════════════════════════════
+   ADMIN — OWNER REQUESTS TAB
+════════════════════════════════════════════════ */
+.owner-requests-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+.owner-request-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+.orc-header { display: flex; align-items: flex-start; gap: 14px; }
+.orc-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; }
+.orc-info { flex: 1; min-width: 0; }
+.orc-name { font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
+.orc-email { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; word-break: break-all; }
+.orc-date { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+.orc-status-pill { flex-shrink: 0; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+
+.orc-permit-section { }
+.orc-permit-label { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.orc-permit-thumb-wrap { display: flex; flex-direction: column; gap: 8px; }
+.orc-permit-thumb { width: 100%; max-height: 160px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-light-bg); cursor: pointer; transition: opacity 0.15s; }
+.orc-permit-thumb:hover { opacity: 0.85; }
+.orc-view-btn { align-self: flex-start; padding: 5px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-light-bg); font-size: 12px; font-weight: 600; cursor: pointer; color: var(--color-text-secondary); }
+.orc-view-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.orc-no-permit { font-size: 13px; color: var(--color-text-muted); font-style: italic; }
+
+.orc-actions { display: flex; gap: 10px; }
+.orc-btn { flex: 1; padding: 9px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid transparent; transition: opacity 0.15s; }
+.orc-btn.approve { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+.orc-btn.reject  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.orc-btn:hover { opacity: 0.8; }
+
+/* Permit full-image modal */
+.permit-modal { max-width: 700px; }
+
+[data-theme="dark"] .owner-request-card { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .orc-permit-thumb { background: #0f172a; border-color: #334155; }
+[data-theme="dark"] .orc-view-btn { background: #0f172a; border-color: #334155; color: #94a3b8; }
+[data-theme="dark"] .owner-pending-card { background: #1e293b; border-color: #334155; }
+
+@media (max-width: 768px) {
+  .owner-requests-grid { grid-template-columns: 1fr; }
+}
+
+/* Owner name on listing detail page */
+.listing-owner-name { font-size: 14px; color: var(--color-text-secondary); margin: 4px 0 0; }
+.listing-owner-name strong { color: var(--color-text-primary); }
+
+/* Own-listing notice on booking panel */
+.own-listing-notice { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 20px; text-align: center; background: var(--color-light-bg); border: 1.5px dashed var(--color-border); border-radius: var(--radius-md); }
+.own-listing-notice .oln-icon { font-size: 32px; }
+.own-listing-notice p { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; margin: 0; }

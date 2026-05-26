@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   getOwnerListings, addOwnerListing, updateOwnerListing, deleteOwnerListing,
   getOwnerBookings, updateOwnerBookingStatus,
-  getOwnerInquiries, replyToOwnerMessage,
 } from "../data/adminData";
 
 const BLANK = {
@@ -42,11 +41,6 @@ function OwnerDashboard() {
   const [bookingFilter, setBookingFilter] = useState("all");
   const [updatingBooking, setUpdatingBooking] = useState(null);
 
-  // ── Messages state ──
-  const [messages, setMessages]   = useState([]);
-  const [replyModal, setReplyModal] = useState(null);
-  const [replyText, setReplyText]   = useState("");
-  const [replying, setReplying]     = useState(false);
 
   useEffect(() => {
     if (localStorage.getItem("userRole") !== "OWNER") {
@@ -59,14 +53,12 @@ function OwnerDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [l, b, m] = await Promise.all([
+    const [l, b] = await Promise.all([
       getOwnerListings(ownerId),
       getOwnerBookings(ownerId),
-      getOwnerInquiries(ownerId),
     ]);
     setListings(l);
     setBookings(b);
-    setMessages(m);
     setLoading(false);
   };
 
@@ -83,6 +75,11 @@ function OwnerDashboard() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setListingError("Image must be under 5 MB. Please choose a smaller file.");
+      e.target.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onloadend = () => setForm((prev) => ({ ...prev, featuredImage: reader.result }));
     reader.readAsDataURL(file);
@@ -104,6 +101,8 @@ function OwnerDashboard() {
       } else {
         const saved = await addOwnerListing(form, ownerId);
         setListings((prev) => [...prev, saved]);
+        // Show a brief notice that the listing is pending admin review
+        alert("Listing submitted! It will appear publicly once an admin approves it. You can see it in your listings with a \"Pending Review\" badge.");
       }
       closeForm();
     } catch (err) {
@@ -136,24 +135,6 @@ function OwnerDashboard() {
     }
   };
 
-  // ── Message reply ────────────────────────────────
-  const openReply = (msg) => { setReplyModal(msg); setReplyText(""); };
-  const handleReply = async () => {
-    if (!replyText.trim()) return;
-    setReplying(true);
-    try {
-      await replyToOwnerMessage(replyModal.id, replyText.trim());
-      setMessages((prev) => prev.map((m) =>
-        m.id === replyModal.id ? { ...m, reply: replyText.trim(), replyDate: new Date().toISOString(), read: true } : m
-      ));
-      setReplyModal(null);
-      setReplyText("");
-    } catch (err) {
-      alert("Reply failed: " + err.message);
-    } finally {
-      setReplying(false);
-    }
-  };
 
   // ── Helpers ──────────────────────────────────────
   const statusStyle = (s) => {
@@ -169,10 +150,9 @@ function OwnerDashboard() {
     : bookings.filter((b) => b.status === bookingFilter);
 
   // ── Stats ─────────────────────────────────────────
-  const totalBookings  = bookings.length;
+  const totalBookings  = bookings.filter((b) => b.status !== "rejected" && b.status !== "cancelled").length;
   const pendingCount   = bookings.filter((b) => b.status === "pending").length;
   const confirmedCount = bookings.filter((b) => b.status === "confirmed").length;
-  const unreadMessages = messages.filter((m) => !m.read && !m.reply).length;
 
   if (loading) {
     return (
@@ -210,10 +190,6 @@ function OwnerDashboard() {
               <span className="owner-stat-num">{confirmedCount}</span>
               <span className="owner-stat-label">Confirmed</span>
             </div>
-            <div className={`owner-stat ${unreadMessages > 0 ? "pending-stat" : ""}`}>
-              <span className="owner-stat-num">{unreadMessages}</span>
-              <span className="owner-stat-label">Unread Msgs</span>
-            </div>
           </div>
         </div>
       </div>
@@ -224,7 +200,6 @@ function OwnerDashboard() {
           {[
             { key: "listings", label: "🏠 My Listings" },
             { key: "bookings", label: `📋 Bookings${pendingCount > 0 ? ` (${pendingCount})` : ""}` },
-            { key: "messages", label: `💬 Messages${unreadMessages > 0 ? ` (${unreadMessages})` : ""}` },
           ].map((t) => (
             <button
               key={t.key}
@@ -511,91 +486,6 @@ function OwnerDashboard() {
           </div>
         )}
 
-        {/* ══════════════════════════════════
-            TAB: MESSAGES
-        ══════════════════════════════════ */}
-        {tab === "messages" && (
-          <div className="owner-section">
-            <div className="owner-section-header">
-              <h2>Inquiries & Messages</h2>
-            </div>
-
-            {messages.length === 0 ? (
-              <div className="owner-empty">
-                <span>💬</span>
-                <p>No messages yet. Inquiries from tenants will appear here.</p>
-              </div>
-            ) : (
-              <div className="owner-messages-list">
-                {[...messages].sort((a, b) => new Date(b.date) - new Date(a.date)).map((m) => (
-                  <div key={m.id} className={`owner-msg-card ${!m.reply && !m.read ? "unread" : ""}`}>
-                    <div className="omc-header">
-                      <div>
-                        <span className="omc-property">{m.propertyTitle}</span>
-                        <span className="omc-from">from {m.fromName} — {m.fromEmail}</span>
-                      </div>
-                      <span className="omc-date">{new Date(m.date).toLocaleDateString()}</span>
-                    </div>
-                    <div className="omc-body">
-                      <div className="omc-bubble tenant-bubble">
-                        <span className="omc-label">{m.fromName}</span>
-                        <p>{m.text}</p>
-                      </div>
-                      {m.reply ? (
-                        <div className="omc-bubble owner-bubble">
-                          <span className="omc-label">You (Owner)</span>
-                          <p>{m.reply}</p>
-                          {m.replyDate && (
-                            <span className="omc-time">{new Date(m.replyDate).toLocaleDateString()}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="omc-awaiting">⏳ Not yet replied</div>
-                      )}
-                    </div>
-                    <div className="omc-actions">
-                      <button
-                        className="owner-reply-btn"
-                        onClick={() => openReply(m)}
-                      >
-                        {m.reply ? "Edit Reply" : "Reply"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Reply modal */}
-            {replyModal && (
-              <div className="owner-modal-overlay" onClick={() => setReplyModal(null)}>
-                <div className="owner-modal" onClick={(e) => e.stopPropagation()}>
-                  <h3>Reply to {replyModal.fromName}</h3>
-                  <p className="owner-modal-context">"{replyModal.text}"</p>
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Type your reply…"
-                    rows={4}
-                    disabled={replying}
-                  />
-                  <div className="owner-modal-actions">
-                    <button className="owner-cancel-btn" onClick={() => setReplyModal(null)} disabled={replying}>
-                      Cancel
-                    </button>
-                    <button
-                      className="owner-save-btn"
-                      onClick={handleReply}
-                      disabled={replying || !replyText.trim()}
-                    >
-                      {replying ? "Sending…" : "Send Reply"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
       </div>
     </div>

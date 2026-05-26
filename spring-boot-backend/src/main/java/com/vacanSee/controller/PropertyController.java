@@ -220,6 +220,7 @@ public class PropertyController {
         PropertyDTO dto = new PropertyDTO();
         dto.setId(p.getId());
         dto.setOwnerId(p.getOwner().getId());
+        dto.setOwnerName(p.getOwner().getFullName());
         dto.setTitle(p.getTitle());
         dto.setDescription(p.getDescription());
         dto.setPrice(p.getPrice());

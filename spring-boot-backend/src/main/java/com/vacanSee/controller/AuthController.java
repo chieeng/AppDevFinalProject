@@ -35,7 +35,18 @@ public class AuthController {
         user.setPhone(registerRequest.getPhone());
         // Accept TENANT or OWNER; anything else (or null) defaults to TENANT
         String reqRole = registerRequest.getRole();
-        user.setRole("OWNER".equalsIgnoreCase(reqRole) ? "OWNER" : "TENANT");
+        boolean isOwner = "OWNER".equalsIgnoreCase(reqRole);
+        user.setRole(isOwner ? "OWNER" : "TENANT");
+
+        // Owners need admin approval before they can log in
+        if (isOwner) {
+            user.setAccountStatus("pending");
+            if (registerRequest.getBusinessPermitImage() != null && !registerRequest.getBusinessPermitImage().isBlank()) {
+                user.setBusinessPermitImage(registerRequest.getBusinessPermitImage());
+            }
+        } else {
+            user.setAccountStatus("active");
+        }
 
         User savedUser = userRepository.save(user);
 
@@ -44,7 +55,10 @@ public class AuthController {
         response.setEmail(savedUser.getEmail());
         response.setFullName(savedUser.getFullName());
         response.setRole(savedUser.getRole());
-        response.setMessage("User registered successfully");
+        response.setAccountStatus(savedUser.getAccountStatus());
+        response.setMessage(isOwner
+            ? "Owner account submitted for review. Please wait for admin approval."
+            : "User registered successfully");
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -59,11 +73,24 @@ public class AuthController {
         }
 
         User loggedInUser = user.get();
+
+        // Block owners who haven't been approved yet
+        String accountStatus = loggedInUser.getAccountStatus();
+        if ("pending".equals(accountStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Your owner account is pending admin approval. You will be notified once approved."));
+        }
+        if ("rejected".equals(accountStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Your owner account application was rejected. Please contact support for assistance."));
+        }
+
         AuthResponseDTO response = new AuthResponseDTO();
         response.setUserId(loggedInUser.getId());
         response.setEmail(loggedInUser.getEmail());
         response.setFullName(loggedInUser.getFullName());
         response.setRole(loggedInUser.getRole());
+        response.setAccountStatus(loggedInUser.getAccountStatus());
         response.setMessage("Login successful");
 
         return ResponseEntity.ok(response);

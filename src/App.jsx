@@ -7,12 +7,7 @@ import ChatBox from "./components/ChatBox";
 
 import Home from "./pages/Home";
 import About from "./pages/About";
-import Contact from "./pages/Contact";
 import Browse from "./pages/Browse";
-import Search from "./pages/Search";
-import Saved from "./pages/Saved";
-import Messages from "./pages/Messages";
-import Conversations from "./pages/Conversations";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -26,9 +21,9 @@ import { loadPropertiesFromBackend } from "./data/appData";
 import "./App.css";
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAdmin, setIsAdmin]       = useState(false);
-  const [isOwner, setIsOwner]       = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem("isLoggedIn") === "true");
+  const [isAdmin, setIsAdmin]       = useState(localStorage.getItem("userRole") === "ADMIN");
+  const [isOwner, setIsOwner]       = useState(localStorage.getItem("userRole") === "OWNER");
 
   const syncRoles = () => {
     const role = localStorage.getItem("userRole");
@@ -46,7 +41,22 @@ function App() {
       setIsLoggedIn(true);
       syncRoles();
     }
-    // Load real property IDs from backend into localStorage cache.
+    // Evict any stale mock listings (ids 1-6 with no ownerName) left from an older build.
+    const cached = JSON.parse(localStorage.getItem("vs_properties") || "[]");
+    const looksLikeMock = cached.length > 0 && cached.every((p) => !p.ownerName && Number(p.id) <= 6);
+    if (looksLikeMock) localStorage.removeItem("vs_properties");
+
+    // Strip any base64 images already sitting in localStorage caches to reclaim quota.
+    ["vs_properties", "vs_admin_listings", "vs_owner_listings"].forEach((key) => {
+      try {
+        const items = JSON.parse(localStorage.getItem(key) || "[]");
+        if (items.some((p) => p.featuredImage)) {
+          localStorage.setItem(key, JSON.stringify(items.map((p) => ({ ...p, featuredImage: null }))));
+        }
+      } catch {}
+    });
+
+    // Load real listings from backend into localStorage cache.
     loadPropertiesFromBackend();
   }, []);
 
@@ -62,10 +72,7 @@ function App() {
       <Routes>
         <Route path="/"            element={<Home />} />
         <Route path="/about"       element={<About />} />
-        <Route path="/contact"     element={<Contact />} />
         <Route path="/browse"      element={<Browse />} />
-        <Route path="/search"      element={<Search />} />
-        <Route path="/saved"       element={<Saved />} />
         <Route path="/login"       element={<Login setIsLoggedIn={handleSetLoggedIn} />} />
         <Route path="/register"    element={<Register setIsLoggedIn={handleSetLoggedIn} />} />
 
@@ -88,8 +95,6 @@ function App() {
           element={isOwner ? <OwnerDashboard /> : <Navigate to="/login" />}
         />
 
-        <Route path="/messages"      element={isLoggedIn ? <Messages />      : <Navigate to="/login" />} />
-        <Route path="/conversations" element={isLoggedIn ? <Conversations /> : <Navigate to="/login" />} />
         <Route path="/profile"       element={isLoggedIn ? <Profile />       : <Navigate to="/login" />} />
         <Route path="/listing/:id"   element={<ListingDetails isLoggedIn={isLoggedIn} />} />
         <Route path="/menu"          element={<Navigate to="/" />} />

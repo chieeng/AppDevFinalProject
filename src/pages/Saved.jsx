@@ -43,7 +43,8 @@ function Saved() {
                 <Card key={p.id} id={p.id} title={p.title}
                   location={p.city || p.location} price={p.price}
                   bedrooms={p.bedrooms} bathrooms={p.bathrooms}
-                  propertyType={p.propertyType} status={p.status} featuredImage={p.featuredImage} />
+                  propertyType={p.propertyType} status={p.status}
+                  featuredImage={p.featuredImage} ownerName={p.ownerName} />
               ))}
             </div>
           </>

@@ -103,7 +103,8 @@ function Search() {
                     bedrooms={p.bedrooms} bathrooms={p.bathrooms}
                     propertyType={p.propertyType} status={p.status}
                     featuredImage={p.featuredImage}
-                    approvalStatus={isAdmin ? p.approvalStatus : undefined} />
+                    approvalStatus={isAdmin ? p.approvalStatus : undefined}
+                    ownerName={p.ownerName} />
                 ))}
               </div>
             )}

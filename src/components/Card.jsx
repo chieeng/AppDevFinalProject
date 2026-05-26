@@ -5,7 +5,7 @@ import listing1 from "../images/listing-1.jpg";
 import listing2 from "../images/listing-2.jpg";
 import listing3 from "../images/listing-3.png";
 
-function Card({ id, title, location, price, bedrooms, bathrooms, propertyType, status, featuredImage, approvalStatus }) {
+function Card({ id, title, location, price, bedrooms, bathrooms, propertyType, status, featuredImage, approvalStatus, ownerName }) {
   const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(() => getSavedIds().includes(id));
 
@@ -148,6 +148,9 @@ function Card({ id, title, location, price, bedrooms, bathrooms, propertyType, s
       <div className="card-content">
         <h3>{title}</h3>
         <p className="location">{location}</p>
+        {ownerName && (
+          <p className="card-owner">🏠 {ownerName}</p>
+        )}
         {(bedrooms || bathrooms) && (
           <div className="card-stats">
             {bedrooms  && <span>🛏 {bedrooms} bed</span>}
